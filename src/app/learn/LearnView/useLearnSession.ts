@@ -4,7 +4,7 @@ import { getCardsOf } from "@/logic/card/getCardsOf";
 import { CognitivePrompt } from "@/logic/cognitivePrompts";
 import { Deck } from "@/logic/deck/deck";
 import { useLearning } from "@/logic/learn";
-import { Rating } from "fsrs.js";
+import { Grade } from "ts-fsrs";
 import { useCallback, useState } from "react";
 
 interface UseLearnSessionOptions {
@@ -30,7 +30,7 @@ export function useLearnSession({
     }
   );
 
-  const [currentRating, setCurrentRating] = useState<Rating | null>(null);
+  const [currentRating, setCurrentRating] = useState<Grade | null>(null);
   const [selectedPrompt, setSelectedPrompt] = useState<CognitivePrompt | null>(
     null
   );
@@ -41,7 +41,7 @@ export function useLearnSession({
   }, [controller.currentCard]);
 
   const answerCard = useCallback(
-    async (rating: Rating) => {
+    async (rating: Grade) => {
       try {
         controller.answerCard(rating);
         controller.requestNextCard();

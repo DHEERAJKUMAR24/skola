@@ -1,4 +1,4 @@
-import { Rating } from "fsrs.js";
+import { Rating } from "ts-fsrs";
 import "./VisualFeedback.css";
 
 const BASE_URL = "visual-feedback";

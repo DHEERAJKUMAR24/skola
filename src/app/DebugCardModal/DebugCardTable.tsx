@@ -1,7 +1,9 @@
 import { Text } from "@/components/ui/Text";
 import { NoteType } from "@/logic/note/note";
-import { Rating, State } from "fsrs.js";
+import { Rating, State } from "ts-fsrs";
+import { useLiveQuery } from "dexie-react-hooks";
 import { Fragment } from "react";
+import { db } from "../../logic/db";
 import { Card } from "../../logic/card/card";
 import "./DebugCardTable.css";
 
@@ -12,6 +14,15 @@ export default function DebugCardTable({
 }: {
   card: Card<NoteType> | undefined;
 }) {
+  const history =
+    useLiveQuery(
+      () =>
+        card
+          ? db.reviewLogs.where("card").equals(card.id).sortBy("reviewedAt")
+          : [],
+      [card?.id]
+    ) ?? [];
+
   if (!card) {
     return (
       <Text size="sm" variant="dimmed" className={`${BASE}__empty`}>
@@ -98,8 +109,8 @@ export default function DebugCardTable({
           <tr>
             <th>Last Review:</th>
             <td>
-              {card.model.last_review.toLocaleDateString()},{" "}
-              {card.model.last_review.toLocaleTimeString()}
+              {card.model.last_review?.toLocaleDateString()},{" "}
+              {card.model.last_review?.toLocaleTimeString()}
             </td>
           </tr>
         </tbody>
@@ -109,12 +120,12 @@ export default function DebugCardTable({
         <thead>
           <tr>
             <th colSpan={2} className={`${BASE}__section-header`}>
-              History ({card.history.length})
+              History ({history.length})
             </th>
           </tr>
         </thead>
         <tbody>
-          {card.history.map((log, index) => (
+          {history.map((log, index) => (
             <Fragment key={log.review.toISOString()}>
               <tr>
                 <th>Date:</th>
@@ -143,7 +154,7 @@ export default function DebugCardTable({
                 <th>Scheduled Days:</th>
                 <td>{log.scheduled_days}</td>
               </tr>
-              {index < card.history.length - 1 && (
+              {index < history.length - 1 && (
                 <tr>
                   <td colSpan={2} className={`${BASE}__spacer`} />
                 </tr>

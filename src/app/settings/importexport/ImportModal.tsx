@@ -3,7 +3,7 @@ import { Modal } from "@/components/ui/Modal";
 import { Tabs } from "@/components/ui/Tabs";
 import { Deck } from "@/logic/deck/deck";
 import { IconClipboardText, IconJson, IconTxt } from "@tabler/icons-react";
-import React, { useState } from "react";
+import { useState } from "react";
 import ImportFromJSON from "./ImportFromJSON";
 import ImportFromPaste from "./ImportFromPaste";
 import ImportFromPlainText from "./ImportFromPlainText";

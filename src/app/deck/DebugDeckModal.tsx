@@ -4,7 +4,7 @@ import { useCardsOf } from "@/logic/card/hooks/useCardsOf";
 import { useStatesOf } from "@/logic/card/hooks/useStatesOf";
 import { useSubDecks } from "@/logic/deck/hooks/useSubDecks";
 import { useSuperDecks } from "@/logic/deck/hooks/useSuperDecks";
-import { State } from "fsrs.js";
+import { State } from "ts-fsrs";
 import { Deck } from "../../logic/deck/deck";
 import "./DebugDeckModal.css";
 

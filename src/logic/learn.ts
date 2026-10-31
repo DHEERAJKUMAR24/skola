@@ -1,5 +1,5 @@
 import { Table } from "dexie";
-import { Rating, SchedulingInfo, State } from "fsrs.js";
+import { Grade, RecordLog, State } from "ts-fsrs";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   updateGlobalScheduler,
@@ -31,12 +31,12 @@ export type LearnController = {
   learnedCardsNumber: number;
 
   currentCard: Card<NoteType> | null;
-  currentCardRepeatInfo: Record<number, SchedulingInfo> | null;
+  currentCardRepeatInfo: RecordLog | null;
 
   showingAnswer: boolean;
   showAnswer: () => void;
 
-  answerCard: (rating: Rating) => void;
+  answerCard: (rating: Grade) => void;
   requestNextCard: () => void;
 
   statistics: DeckStatistics;
@@ -195,7 +195,14 @@ export function useLearning(
   //Shown on buttons
   const currentCardRepeatInfo = useMemo(() => {
     if (currentCard) {
-      return scheduler.repeat(currentCard.model, new Date(Date.now()));
+      // Cards stored by the old fsrs.js lack learning_steps.
+      return scheduler.repeat(
+        {
+          ...currentCard.model,
+          learning_steps: currentCard.model.learning_steps ?? 0,
+        },
+        new Date(Date.now())
+      );
     } else {
       return null;
     }
@@ -203,7 +210,7 @@ export function useLearning(
 
   //Answering the current card with the given rating
   const answer = useCallback(
-    (rating: Rating) => {
+    (rating: Grade) => {
       if (currentCard && currentCardRepeatInfo) {
         //Don't update the card if it is already learned and not due for a review
         if (
@@ -215,7 +222,7 @@ export function useLearning(
           updateCardModel(
             currentCard,
             currentCardRepeatInfo[rating].card,
-            currentCardRepeatInfo[rating].review_log
+            currentCardRepeatInfo[rating].log
           );
         }
         if (currentCardRepeatInfo[rating].card.scheduled_days === 0) {

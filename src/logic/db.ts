@@ -1,12 +1,13 @@
 import Dexie, { Table } from "dexie";
 import "dexie-export-import";
-import dexieCloud from "dexie-cloud-addon";
 import { Card } from "./card/card";
+import { ReviewLogRecord, toReviewLogRecord } from "./card/reviewLog";
 import { Deck } from "./deck/deck";
 import { NoteType } from "./note/note";
 import { Note } from "./note/note";
 import { Settings, SettingsValues } from "./settings/Settings";
 import { DeckStatistics } from "./statistics";
+import { Tombstone, installSyncTracking } from "./syncTracking";
 
 export class Database extends Dexie {
   decks!: Table<Deck>;
@@ -14,9 +15,11 @@ export class Database extends Dexie {
   notes!: Table<Note<NoteType>>;
   statistics!: Table<DeckStatistics>;
   settings!: Table<Settings<keyof SettingsValues>>;
+  reviewLogs!: Table<ReviewLogRecord>;
+  tombstones!: Table<Tombstone>;
 
   constructor() {
-    super("skola_db", { addons: [dexieCloud], cache: "immutable" });
+    super("skola_db", { cache: "immutable" });
     this.version(22).stores({
       cards: "id, note, deck",
       decks: "id, *cards, *notes, *subDecks, *superDecks",
@@ -24,14 +27,35 @@ export class Database extends Dexie {
       statistics: "[deck+day], day",
       settings: "key",
     });
+    this.version(23)
+      .stores({ reviewLogs: "id, card, reviewedAt" })
+      .upgrade(async (tx) => {
+        // Move per-card history into the append-only reviewLogs table.
+        // Ids are deterministic so re-running the upgrade cannot duplicate rows.
+        const logs: ReviewLogRecord[] = [];
+        await tx
+          .table("cards")
+          .toCollection()
+          .modify((card: { id: string; history?: ReviewLogRecord[] }) => {
+            (card.history ?? []).forEach((log, i) => {
+              const review = new Date(log.review);
+              logs.push(
+                toReviewLogRecord(
+                  card.id,
+                  { ...log, review },
+                  `${card.id}:${review.getTime()}:${i}`
+                )
+              );
+            });
+            // biome-ignore lint/performance/noDelete: removing a stored field
+            delete card.history;
+          });
+        await tx.table("reviewLogs").bulkPut(logs);
+      });
+    this.version(24).stores({ tombstones: "id, updatedAt" });
+    installSyncTracking(this);
     this.open();
   }
 }
 
 export const db = new Database();
-
-db.cloud.configure({
-  databaseUrl: "https://zo30f12v5.dexie.cloud",
-  tryUseServiceWorker: true,
-  customLoginGui: true,
-});

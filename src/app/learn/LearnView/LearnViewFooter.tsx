@@ -4,7 +4,7 @@ import i18n from "@/i18n";
 import { useHotkeys } from "@/lib/hooks/useHotkeys";
 import { LearnController } from "@/logic/learn";
 import { useSetting } from "@/logic/settings/hooks/useSetting";
-import { Rating } from "fsrs.js";
+import { Grade, Rating } from "ts-fsrs";
 import { t } from "i18next";
 import AnswerCardButton from "./AnswerCardButton";
 import "./LearnViewFooter.css";
@@ -19,7 +19,7 @@ interface LearnViewFooterProps {
   answer: Function;
 }
 
-function timeStringForRating(rating: Rating, controller: LearnController) {
+function timeStringForRating(rating: Grade, controller: LearnController) {
   if (!controller.currentCardRepeatInfo) {
     return "";
   }

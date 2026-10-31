@@ -5,8 +5,8 @@ import "./style/shell.css";
 import { useEffect } from "react";
 import { I18nextProvider } from "react-i18next";
 import { Outlet, useLocation } from "react-router-dom";
+import AuthGate from "./app/login/AuthGate";
 import WelcomeView from "./app/WelcomeView";
-import LoginUI from "./app/login/LoginUI";
 import Header from "./app/shell/Header/Header";
 import Sidebar from "./app/shell/Sidebar/Sidebar";
 import {
@@ -14,6 +14,7 @@ import {
   NotificationProvider,
   useNotificationSetup,
 } from "./components/Notification";
+import { syncUrl, useAuthEmail } from "./logic/auth";
 import { useDensity } from "./hooks/useDensity";
 import { useTheme } from "./hooks/useTheme";
 import i18n from "./i18n";
@@ -43,7 +44,10 @@ function AppContent() {
   useDeckStatsCacheInit();
   const [sidebarMenuOpened, sidebarHandlers] = useDisclosure(false);
 
-  const [registered] = useLocalStorage("registered", false);
+  const [registeredFlag] = useLocalStorage("registered", false);
+  const [skippedAuth, setSkippedAuth] = useLocalStorage("authSkipped", false);
+  const authEmail = useAuthEmail();
+  const registered = registeredFlag || !!authEmail;
 
   const routeIsLearn = useLocation().pathname.startsWith("/learn");
   const isXsOrSmaller = useMediaQuery(`(max-width: ${breakpoints.xs}px)`);
@@ -67,7 +71,9 @@ function AppContent() {
   return (
     <I18nextProvider i18n={i18n}>
       <NotificationContainer />
-      {registered ? (
+      {syncUrl && !authEmail && !skippedAuth ? (
+        <AuthGate onSkip={() => setSkippedAuth(true)} />
+      ) : registered ? (
         <div className={BASE}>
           <Header
             menuOpened={sidebarMenuOpened}
@@ -100,7 +106,6 @@ function AppContent() {
               </div>
             </main>
           </div>
-          <LoginUI />
         </div>
       ) : (
         <WelcomeView />

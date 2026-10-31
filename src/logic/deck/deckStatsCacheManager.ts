@@ -1,4 +1,4 @@
-import { State } from "fsrs.js";
+import { State } from "ts-fsrs";
 import { SimplifiedState } from "../card/getSimplifiedStatesOf";
 import { db } from "../db";
 import getSetting from "../settings/hooks/getSetting";

@@ -17,11 +17,11 @@ import { useNavigate, useParams } from "react-router-dom";
 import { AppHeaderContent } from "../shell/Header/Header";
 import AboutSettingsView from "./AboutSettingsView";
 import AppearanceSettingsView from "./AppearanceSettingsView";
-import CloudSettingsView from "./CloudSettingsView";
 import DatabaseSettingsView from "./DatabaseSettingsView/DatabaseSettingsView";
 import EditingSettingsView from "./EditingSettingsView/EditingSettingsView";
 import GeneralSettingsView from "./GeneralSettingsView";
 import LearnSettingsView from "./LearnSettingsView";
+import SyncSettingsView from "./SyncSettingsView";
 import "./SettingsView.css";
 
 const BASE = "settings-view";
@@ -76,9 +76,9 @@ export default function SettingsView() {
             <IconDatabase size={18} />
             {t("settings.database.title")}
           </Tabs.Tab>
-          <Tabs.Tab value="cloud">
+          <Tabs.Tab value="sync">
             <IconCloud size={18} />
-            {t("settings.cloud.title")}
+            {t("settings.sync.title", "Sync")}
           </Tabs.Tab>
           <Tabs.Tab value="about">
             <IconInfoCircle size={18} />
@@ -106,8 +106,8 @@ export default function SettingsView() {
         <Tabs.Panel value="database">
           <DatabaseSettingsView />
         </Tabs.Panel>
-        <Tabs.Panel value="cloud">
-          <CloudSettingsView />
+        <Tabs.Panel value="sync">
+          <SyncSettingsView />
         </Tabs.Panel>
         <Tabs.Panel value="about">
           <AboutSettingsView />

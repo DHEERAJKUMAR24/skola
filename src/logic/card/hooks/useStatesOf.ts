@@ -1,4 +1,4 @@
-import { State } from "fsrs.js";
+import { State } from "ts-fsrs";
 import { useMemo } from "react";
 import { NoteType } from "../../note/note";
 import { Card } from "../card";

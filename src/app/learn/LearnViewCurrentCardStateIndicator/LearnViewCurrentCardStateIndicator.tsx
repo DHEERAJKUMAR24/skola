@@ -5,8 +5,8 @@ import {
   IconProps,
   IconSparkles,
 } from "@tabler/icons-react";
-import { Card as Model } from "fsrs.js";
-import { State } from "fsrs.js";
+import { Card as Model } from "ts-fsrs";
+import { State } from "ts-fsrs";
 import React, { useCallback } from "react";
 import "./LearnViewCurrentCardStateIndicator.css";
 

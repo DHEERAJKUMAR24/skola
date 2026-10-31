@@ -1,4 +1,4 @@
-import { Card as Model, ReviewLog } from "fsrs.js";
+import { Card as Model } from "ts-fsrs";
 import i18n from "../../i18n";
 import { NoteType } from "../note/note";
 import { Content } from "./CardContent";
@@ -23,7 +23,6 @@ export const NoteTypeLabels: Record<NoteType, string> = {
 
 export interface CardSkeleton {
   id: string;
-  history: ReviewLog[];
   model: Model;
   deck: string;
   creationDate: Date;

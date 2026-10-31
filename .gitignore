@@ -27,3 +27,13 @@ yarn-error.log*
 *.key
 
 export.json
+
+# Next.js / Serwist
+/.next
+/out
+next-env.d.ts
+public/sw.js
+public/sw.js.map
+public/swe-worker*
+*.tsbuildinfo
+.pglite

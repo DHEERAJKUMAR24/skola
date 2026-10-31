@@ -1,4 +1,3 @@
-import { CloudSyncState } from "@/components/CloudSyncState";
 import { IconButton } from "@/components/ui/IconButton";
 import { NavItem } from "@/components/ui/NavItem";
 import { breakpoints } from "@/lib/breakpoints";
@@ -17,7 +16,7 @@ import "./Sidebar.css";
 import { SpotlightCard } from "../Spotlight";
 
 const BASE = "sidebar";
-const APP_VERSION = import.meta.env.VITE_APP_VERSION || "0.0.0";
+const APP_VERSION = process.env.NEXT_PUBLIC_APP_VERSION || "0.0.0";
 
 interface SidebarProps {
   menuOpened: boolean;
@@ -111,8 +110,6 @@ function Sidebar({ menuOpened, menuHandlers }: SidebarProps) {
 
           <DeckList minimalMode={minimalMode} />
         </div>
-
-        <CloudSyncState minimal={minimalMode} />
       </div>
     </aside>
   );
