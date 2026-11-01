@@ -54,7 +54,7 @@
     "format": "biome check --apply",
     "tauri": "tauri",
     "dev": "next dev --webpack",
-    "db:migrate": "tsx --env-file-if-exists=.env.local scripts/db-migrate.ts"
+    "db:push": "supabase db push"
   },
   "eslintConfig": {
     "extends": [

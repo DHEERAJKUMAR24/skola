@@ -1,7 +1,7 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import { getDb } from "./db";
-import { verifyLogin } from "./users";
+import { getUserEmail, verifyLogin } from "./users";
 
 /**
  * Auth.js only signs people in on this site (cookie session for the /oauth/authorize page).
@@ -37,8 +37,12 @@ export const { handlers, auth } = NextAuth({
   },
 });
 
-/** The signed-in user's id for the current request, or null. */
+/**
+ * The signed-in user's id for the current request, or null. The cookie alone is not enough:
+ * it could be left over from another database or a deleted account, so the user must still exist.
+ */
 export async function currentUserId() {
   const s = await auth();
-  return (s?.user as { id?: string } | undefined)?.id ?? null;
+  const id = (s?.user as { id?: string } | undefined)?.id;
+  return id && (await getUserEmail(getDb(), id)) ? id : null;
 }

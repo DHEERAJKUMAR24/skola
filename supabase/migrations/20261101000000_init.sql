@@ -62,3 +62,12 @@ CREATE TABLE IF NOT EXISTS oauth_tokens (
   revoked_at         bigint
 );
 CREATE INDEX IF NOT EXISTS oauth_tokens_user ON oauth_tokens (user_id);
+
+-- Supabase exposes every public table through its REST API using the public anon key.
+-- RLS with no policies denies that access; our server connects as the table owner, which bypasses RLS.
+ALTER TABLE changes         ENABLE ROW LEVEL SECURITY;
+ALTER TABLE users           ENABLE ROW LEVEL SECURITY;
+ALTER TABLE password_resets ENABLE ROW LEVEL SECURITY;
+ALTER TABLE oauth_clients   ENABLE ROW LEVEL SECURITY;
+ALTER TABLE oauth_codes     ENABLE ROW LEVEL SECURITY;
+ALTER TABLE oauth_tokens    ENABLE ROW LEVEL SECURITY;
