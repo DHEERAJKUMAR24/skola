@@ -14,13 +14,27 @@ const advance = async (ms: number) => {
 beforeAll(() => {
   localStorage.setItem(
     "auth.tokens",
-    JSON.stringify({ access: "a", refresh: "r", expiresAt: Date.now() + 3_600_000 })
+    JSON.stringify({
+      access: "a",
+      refresh: "r",
+      expiresAt: Date.now() + 3_600_000,
+    })
   );
   vi.stubGlobal("fetch", async (url: string) => {
     calls.push(url);
-    return Response.json(url.includes("/push") ? { seq: 1 } : { rows: [], seq: 0, more: false });
+    return Response.json(
+      url.includes("/push") ? { seq: 1 } : { rows: [], seq: 0, more: false }
+    );
   });
-  vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "setInterval", "clearInterval", "Date"] });
+  vi.useFakeTimers({
+    toFake: [
+      "setTimeout",
+      "clearTimeout",
+      "setInterval",
+      "clearInterval",
+      "Date",
+    ],
+  });
 });
 
 afterAll(() => {

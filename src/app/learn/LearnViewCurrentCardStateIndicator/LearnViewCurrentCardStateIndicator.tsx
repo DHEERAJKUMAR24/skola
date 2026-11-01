@@ -5,9 +5,9 @@ import {
   IconProps,
   IconSparkles,
 } from "@tabler/icons-react";
+import React, { useCallback } from "react";
 import { Card as Model } from "ts-fsrs";
 import { State } from "ts-fsrs";
-import React, { useCallback } from "react";
 import "./LearnViewCurrentCardStateIndicator.css";
 
 const BASE = "learn-view-current-card-state-indicator";

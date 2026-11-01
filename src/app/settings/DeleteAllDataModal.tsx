@@ -1,4 +1,3 @@
-
 interface DeleteAllDataModalProps {}
 
 export default function DeleteAllDataModal({}: DeleteAllDataModalProps) {

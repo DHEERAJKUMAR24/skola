@@ -1,5 +1,5 @@
-import { FSRS, default_w, generatorParameters } from "ts-fsrs";
 import { useEffect } from "react";
+import { FSRS, default_w, generatorParameters } from "ts-fsrs";
 import { defaultSettings } from "../settings/defaultSettings";
 import { useSetting } from "../settings/hooks/useSetting";
 import { setSetting } from "../settings/setSetting";
@@ -26,7 +26,10 @@ export function useGlobalScheduler() {
 }
 
 export function updateGlobalScheduler() {
-  setSetting("#globalScheduler_maximumInterval", scheduler.parameters.maximum_interval);
+  setSetting(
+    "#globalScheduler_maximumInterval",
+    scheduler.parameters.maximum_interval
+  );
   setSetting(
     "#globalScheduler_requestRetention",
     scheduler.parameters.request_retention

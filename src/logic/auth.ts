@@ -35,7 +35,10 @@ export function getAccessTokenSync() {
 }
 
 const b64url = (bytes: Uint8Array) =>
-  btoa(String.fromCharCode(...bytes)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  btoa(String.fromCharCode(...bytes))
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/, "");
 
 const random = (n: number) => b64url(crypto.getRandomValues(new Uint8Array(n)));
 
@@ -43,7 +46,9 @@ const random = (n: number) => b64url(crypto.getRandomValues(new Uint8Array(n)));
 export async function startLogin(mode: "login" | "signup" = "login") {
   const verifier = random(32);
   const challenge = b64url(
-    new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(verifier)))
+    new Uint8Array(
+      await crypto.subtle.digest("SHA-256", new TextEncoder().encode(verifier))
+    )
   );
   const state = random(16);
   sessionStorage.setItem(PKCE_KEY, JSON.stringify({ verifier, state }));
@@ -56,7 +61,9 @@ export async function startLogin(mode: "login" | "signup" = "login") {
     state,
   })}`;
   location.href =
-    mode === "signup" ? `/signup?callbackUrl=${encodeURIComponent(authorize)}` : authorize;
+    mode === "signup"
+      ? `/signup?callbackUrl=${encodeURIComponent(authorize)}`
+      : authorize;
 }
 
 async function tokenRequest(body: Record<string, string>) {
@@ -68,7 +75,11 @@ async function tokenRequest(body: Record<string, string>) {
   return res;
 }
 
-function store(json: { access_token: string; refresh_token: string; expires_in: number }) {
+function store(json: {
+  access_token: string;
+  refresh_token: string;
+  expires_in: number;
+}) {
   const t: Tokens = {
     access: json.access_token,
     refresh: json.refresh_token,
@@ -82,9 +93,13 @@ function store(json: { access_token: string; refresh_token: string; expires_in: 
 export async function completeLogin(params: URLSearchParams) {
   const saved = JSON.parse(sessionStorage.getItem(PKCE_KEY) ?? "null");
   sessionStorage.removeItem(PKCE_KEY);
-  if (params.get("error")) throw new Error(params.get("error_description") ?? params.get("error") ?? "Sign-in failed");
+  if (params.get("error"))
+    throw new Error(
+      params.get("error_description") ?? params.get("error") ?? "Sign-in failed"
+    );
   const code = params.get("code");
-  if (!saved || !code || params.get("state") !== saved.state) throw new Error("Sign-in expired, please try again");
+  if (!saved || !code || params.get("state") !== saved.state)
+    throw new Error("Sign-in expired, please try again");
 
   const res = await tokenRequest({
     grant_type: "authorization_code",
@@ -95,7 +110,9 @@ export async function completeLogin(params: URLSearchParams) {
   if (!res.ok) throw new Error("Sign-in failed, please try again");
   const t = store(await res.json());
   try {
-    const me = await fetch("/api/me", { headers: { authorization: `Bearer ${t.access}` } });
+    const me = await fetch("/api/me", {
+      headers: { authorization: `Bearer ${t.access}` },
+    });
     if (me.ok) localStorage.setItem(EMAIL_KEY, (await me.json()).email ?? "");
   } catch {}
   changed();
@@ -109,7 +126,10 @@ function refresh() {
     try {
       const t = readTokens();
       if (!t) return null;
-      const res = await tokenRequest({ grant_type: "refresh_token", refresh_token: t.refresh });
+      const res = await tokenRequest({
+        grant_type: "refresh_token",
+        refresh_token: t.refresh,
+      });
       if (!res.ok) {
         clearSession();
         return null;
@@ -130,7 +150,10 @@ export async function authFetch(url: string, init: RequestInit = {}) {
   if (t && t.expiresAt - 60_000 < Date.now()) t = await refresh();
   if (!t) throw new NotSignedIn();
   const call = (tok: string) =>
-    fetch(url, { ...init, headers: { ...init.headers, authorization: `Bearer ${tok}` } });
+    fetch(url, {
+      ...init,
+      headers: { ...init.headers, authorization: `Bearer ${tok}` },
+    });
   let res = await call(t.access);
   if (res.status === 401) {
     t = await refresh();

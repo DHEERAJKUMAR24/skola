@@ -19,8 +19,12 @@ export class AuthError extends Error {
 
 export function checkPassword(password: unknown): asserts password is string {
   if (typeof password !== "string" || password.length < MIN_PASSWORD)
-    throw new AuthError("weak", `Password must be at least ${MIN_PASSWORD} characters`);
-  if (password.length > 200) throw new AuthError("weak", "Password is too long");
+    throw new AuthError(
+      "weak",
+      `Password must be at least ${MIN_PASSWORD} characters`
+    );
+  if (password.length > 200)
+    throw new AuthError("weak", "Password is too long");
 }
 
 export async function createUser(db: Db, emailRaw: string, password: string) {
@@ -29,7 +33,9 @@ export async function createUser(db: Db, emailRaw: string, password: string) {
     throw new AuthError("invalid", "Enter a valid email address");
   checkPassword(password);
   if (process.env.ALLOW_SIGNUP === "false") {
-    const n = await db.query<{ n: number }>("SELECT COUNT(*)::int AS n FROM users");
+    const n = await db.query<{ n: number }>(
+      "SELECT COUNT(*)::int AS n FROM users"
+    );
     if (n.rows[0].n > 0) throw new AuthError("closed", "Sign-up is closed");
   }
   const id = randomUUID();
@@ -39,7 +45,8 @@ export async function createUser(db: Db, emailRaw: string, password: string) {
      ON CONFLICT (email) DO NOTHING RETURNING id`,
     [id, email, hash, Date.now()]
   );
-  if (!res.rows.length) throw new AuthError("exists", "That email is already registered");
+  if (!res.rows.length)
+    throw new AuthError("exists", "That email is already registered");
   return { id, email };
 }
 
@@ -51,28 +58,41 @@ export async function verifyLogin(db: Db, emailRaw: string, password: string) {
     password_hash: string;
     failed_logins: number;
     locked_until: string;
-  }>("SELECT id, password_hash, failed_logins, locked_until FROM users WHERE email = $1", [email]);
+  }>(
+    "SELECT id, password_hash, failed_logins, locked_until FROM users WHERE email = $1",
+    [email]
+  );
   const u = rows[0];
   if (!u) {
     // Burn comparable time so unknown emails are not distinguishable by latency.
     await hashPassword(password);
     return null;
   }
-  if (Number(u.locked_until) > Date.now()) throw new AuthError("locked", "Too many attempts, try again later");
+  if (Number(u.locked_until) > Date.now())
+    throw new AuthError("locked", "Too many attempts, try again later");
   if (await verifyPassword(password, u.password_hash)) {
-    if (u.failed_logins) await db.query("UPDATE users SET failed_logins = 0 WHERE id = $1", [u.id]);
+    if (u.failed_logins)
+      await db.query("UPDATE users SET failed_logins = 0 WHERE id = $1", [
+        u.id,
+      ]);
     return { id: u.id, email };
   }
   const fails = u.failed_logins + 1;
-  await db.query("UPDATE users SET failed_logins = $2, locked_until = $3 WHERE id = $1", [
-    u.id,
-    fails >= MAX_FAILS ? 0 : fails,
-    fails >= MAX_FAILS ? Date.now() + LOCK_MS : 0,
-  ]);
+  await db.query(
+    "UPDATE users SET failed_logins = $2, locked_until = $3 WHERE id = $1",
+    [
+      u.id,
+      fails >= MAX_FAILS ? 0 : fails,
+      fails >= MAX_FAILS ? Date.now() + LOCK_MS : 0,
+    ]
+  );
   return null;
 }
 
 export async function getUserEmail(db: Db, userId: string) {
-  const { rows } = await db.query<{ email: string }>("SELECT email FROM users WHERE id = $1", [userId]);
+  const { rows } = await db.query<{ email: string }>(
+    "SELECT email FROM users WHERE id = $1",
+    [userId]
+  );
   return rows[0]?.email ?? null;
 }

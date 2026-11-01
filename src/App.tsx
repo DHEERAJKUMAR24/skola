@@ -5,8 +5,8 @@ import "./style/shell.css";
 import { useEffect } from "react";
 import { I18nextProvider } from "react-i18next";
 import { Outlet, useLocation } from "react-router-dom";
-import AuthGate from "./app/login/AuthGate";
 import WelcomeView from "./app/WelcomeView";
+import AuthGate from "./app/login/AuthGate";
 import Header from "./app/shell/Header/Header";
 import Sidebar from "./app/shell/Sidebar/Sidebar";
 import {
@@ -14,7 +14,6 @@ import {
   NotificationProvider,
   useNotificationSetup,
 } from "./components/Notification";
-import { syncUrl, useAuthEmail } from "./logic/auth";
 import { useDensity } from "./hooks/useDensity";
 import { useTheme } from "./hooks/useTheme";
 import i18n from "./i18n";
@@ -22,6 +21,7 @@ import { breakpoints } from "./lib/breakpoints";
 import { useDisclosure } from "./lib/hooks/useDisclosure";
 import { useLocalStorage } from "./lib/hooks/useLocalStorage";
 import { useMediaQuery } from "./lib/hooks/useMediaQuery";
+import { syncUrl, useAuthEmail } from "./logic/auth";
 import { useDeckStatsCacheInit } from "./logic/deck/hooks/useDeckStatsCacheInit";
 import { useSetting } from "./logic/settings/hooks/useSetting";
 

@@ -17,7 +17,11 @@ export const { handlers, auth } = NextAuth({
       credentials: { email: {}, password: {} },
       async authorize(c) {
         try {
-          const u = await verifyLogin(getDb(), String(c.email ?? ""), String(c.password ?? ""));
+          const u = await verifyLogin(
+            getDb(),
+            String(c.email ?? ""),
+            String(c.password ?? "")
+          );
           return u ? { id: u.id, email: u.email } : null;
         } catch {
           return null; // locked or DB error: show the same generic failure
@@ -31,7 +35,8 @@ export const { handlers, auth } = NextAuth({
       return token;
     },
     session({ session, token }) {
-      if (session.user) (session.user as { id?: string }).id = String(token.uid);
+      if (session.user)
+        (session.user as { id?: string }).id = String(token.uid);
       return session;
     },
   },

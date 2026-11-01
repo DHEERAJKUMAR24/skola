@@ -28,7 +28,10 @@ function SignupForm() {
           body: JSON.stringify({ email, password }),
         });
         if (!res.ok) {
-          setError((await res.json().catch(() => ({}))).error ?? "Could not create the account");
+          setError(
+            (await res.json().catch(() => ({}))).error ??
+              "Could not create the account"
+          );
           setBusy(false);
           return;
         }
@@ -38,12 +41,30 @@ function SignupForm() {
     >
       <Stack gap="md" align="start">
         {error && <Alert variant="error">{error}</Alert>}
-        <TextInput label="Email" type="email" autoComplete="username" required value={email} onChange={(e) => setEmail(e.currentTarget.value)} />
-        <TextInput label="Password" type="password" autoComplete="new-password" description="At least 10 characters" required minLength={10} value={password} onChange={(e) => setPassword(e.currentTarget.value)} />
+        <TextInput
+          label="Email"
+          type="email"
+          autoComplete="username"
+          required
+          value={email}
+          onChange={(e) => setEmail(e.currentTarget.value)}
+        />
+        <TextInput
+          label="Password"
+          type="password"
+          autoComplete="new-password"
+          description="At least 10 characters"
+          required
+          minLength={10}
+          value={password}
+          onChange={(e) => setPassword(e.currentTarget.value)}
+        />
         <Button type="submit" variant="primary" disabled={busy}>
           Create account
         </Button>
-        <a href={`/login?callbackUrl=${encodeURIComponent(callback)}`}>I already have an account</a>
+        <a href={`/login?callbackUrl=${encodeURIComponent(callback)}`}>
+          I already have an account
+        </a>
       </Stack>
     </form>
   );

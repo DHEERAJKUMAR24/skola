@@ -1,6 +1,4 @@
 import App from "@/App";
-import { syncUrl } from "./logic/auth";
-import { startSync } from "./logic/sync";
 import DeckView from "@/app/deck/DeckView";
 import NewNotesView from "@/app/editor/NewNotesView";
 import NoteExplorerView from "@/app/explorer/NoteExplorerView";
@@ -10,6 +8,8 @@ import SettingsView from "@/app/settings/SettingsView";
 import StatsView from "@/app/statistics/StatsView";
 import { useEffect } from "react";
 import { Navigate, RouterProvider, createHashRouter } from "react-router-dom";
+import { syncUrl } from "./logic/auth";
+import { startSync } from "./logic/sync";
 
 const router = createHashRouter(
   [

@@ -4,8 +4,8 @@ import i18n from "@/i18n";
 import { useHotkeys } from "@/lib/hooks/useHotkeys";
 import { LearnController } from "@/logic/learn";
 import { useSetting } from "@/logic/settings/hooks/useSetting";
-import { Grade, Rating } from "ts-fsrs";
 import { t } from "i18next";
+import { Grade, Rating } from "ts-fsrs";
 import AnswerCardButton from "./AnswerCardButton";
 import "./LearnViewFooter.css";
 

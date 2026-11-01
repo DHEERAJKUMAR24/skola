@@ -15,7 +15,9 @@ export default function CallbackPage() {
     started.current = true;
     completeLogin(new URLSearchParams(location.search))
       .then(() => location.replace("/"))
-      .catch((e) => setError(e instanceof Error ? e.message : "Sign-in failed"));
+      .catch((e) =>
+        setError(e instanceof Error ? e.message : "Sign-in failed")
+      );
   }, []);
 
   return error ? (

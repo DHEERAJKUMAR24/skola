@@ -4,8 +4,8 @@ import { getCardsOf } from "@/logic/card/getCardsOf";
 import { CognitivePrompt } from "@/logic/cognitivePrompts";
 import { Deck } from "@/logic/deck/deck";
 import { useLearning } from "@/logic/learn";
-import { Grade } from "ts-fsrs";
 import { useCallback, useState } from "react";
+import { Grade } from "ts-fsrs";
 
 interface UseLearnSessionOptions {
   deck: Deck | undefined;

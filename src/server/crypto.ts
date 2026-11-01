@@ -27,10 +27,20 @@ const R = 8;
 const P = 1;
 const KEYLEN = 32;
 
-const derive = (password: string, salt: Buffer, n: number, r: number, p: number) =>
+const derive = (
+  password: string,
+  salt: Buffer,
+  n: number,
+  r: number,
+  p: number
+) =>
   new Promise<Buffer>((resolve, reject) =>
-    scrypt(password.normalize("NFKC"), salt, KEYLEN, { N: n, r, p }, (err, key) =>
-      err ? reject(err) : resolve(key)
+    scrypt(
+      password.normalize("NFKC"),
+      salt,
+      KEYLEN,
+      { N: n, r, p },
+      (err, key) => (err ? reject(err) : resolve(key))
     )
   );
 

@@ -1,4 +1,10 @@
-import { NotSignedIn, authFetch, getAccessTokenSync, isSignedIn, syncUrl } from "./auth";
+import {
+  NotSignedIn,
+  authFetch,
+  getAccessTokenSync,
+  isSignedIn,
+  syncUrl,
+} from "./auth";
 import { db } from "./db";
 import { LOCAL_CHANGE_EVENT, syncFlags } from "./syncTracking";
 
@@ -40,18 +46,30 @@ async function collectChanges(since: number): Promise<WireRow[]> {
     const recs =
       tbl === "reviewLogs"
         ? await db.reviewLogs.where("reviewedAt").aboveOrEqual(since).toArray()
-        : await db.table(tbl).filter((r) => (r.updatedAt ?? 0) >= since).toArray();
+        : await db
+            .table(tbl)
+            .filter((r) => (r.updatedAt ?? 0) >= since)
+            .toArray();
     for (const r of recs) {
       rows.push({
         tbl,
         id: r.id,
         data: encode(r),
-        updatedAt: tbl === "reviewLogs" ? r.reviewedAt : r.updatedAt ?? 0,
+        updatedAt: tbl === "reviewLogs" ? r.reviewedAt : (r.updatedAt ?? 0),
       });
     }
   }
-  for (const t of await db.tombstones.where("updatedAt").aboveOrEqual(since).toArray())
-    rows.push({ tbl: t.table, id: t.id, data: null, updatedAt: t.updatedAt, deleted: true });
+  for (const t of await db.tombstones
+    .where("updatedAt")
+    .aboveOrEqual(since)
+    .toArray())
+    rows.push({
+      tbl: t.table,
+      id: t.id,
+      data: null,
+      updatedAt: t.updatedAt,
+      deleted: true,
+    });
   return rows;
 }
 
@@ -61,7 +79,11 @@ async function applyRemote(rows: WireRow[]) {
     for (const r of rows) {
       const table = db.table(r.tbl);
       const local = await table.get(r.id);
-      const localAt = local ? (r.tbl === "reviewLogs" ? r.updatedAt : local.updatedAt ?? 0) : -1;
+      const localAt = local
+        ? r.tbl === "reviewLogs"
+          ? r.updatedAt
+          : (local.updatedAt ?? 0)
+        : -1;
       if (local && localAt >= r.updatedAt) continue;
       try {
         if (r.deleted) await table.delete(r.id);
@@ -89,7 +111,11 @@ function pushOnHide(url: string, init: RequestInit) {
 }
 
 /** Pushes local changes; also pulls unless `pull` is false (push-only saves a request). */
-export async function syncOnce(baseUrl: string, keepalive = false, pull = true) {
+export async function syncOnce(
+  baseUrl: string,
+  keepalive = false,
+  pull = true
+) {
   if (!isSignedIn()) return;
   const since = getNum(PUSHED_KEY);
   const rows = await collectChanges(since);
@@ -101,14 +127,23 @@ export async function syncOnce(baseUrl: string, keepalive = false, pull = true) 
       : await authFetch(`${baseUrl}/sync/push`, init);
     if (!res) return;
     check(res, "push");
-    localStorage.setItem(PUSHED_KEY, String(Math.max(since, ...rows.map((r) => r.updatedAt))));
+    localStorage.setItem(
+      PUSHED_KEY,
+      String(Math.max(since, ...rows.map((r) => r.updatedAt)))
+    );
   }
   if (keepalive || !pull) return;
   let more = true;
   while (more) {
-    const res = await authFetch(`${baseUrl}/sync/pull?since=${getNum(SEQ_KEY)}`);
+    const res = await authFetch(
+      `${baseUrl}/sync/pull?since=${getNum(SEQ_KEY)}`
+    );
     check(res, "pull");
-    const body = (await res.json()) as { rows: WireRow[]; seq: number; more: boolean };
+    const body = (await res.json()) as {
+      rows: WireRow[];
+      seq: number;
+      more: boolean;
+    };
     await applyRemote(body.rows);
     localStorage.setItem(SEQ_KEY, String(body.seq));
     more = body.more;
@@ -147,7 +182,11 @@ export function startSync(baseUrl: string) {
     }
   };
   const pullIfStale = () => {
-    if (document.visibilityState === "visible" && Date.now() - lastPull > MIN_PULL_GAP_MS) run();
+    if (
+      document.visibilityState === "visible" &&
+      Date.now() - lastPull > MIN_PULL_GAP_MS
+    )
+      run();
   };
 
   let pushTimer: ReturnType<typeof setTimeout> | undefined;

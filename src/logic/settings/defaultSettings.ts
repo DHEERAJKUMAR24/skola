@@ -26,6 +26,5 @@ export const defaultSettings: SettingsValues = {
   "#newDayStartHour": 4,
   "#globalScheduler_maximumInterval": 36500,
   "#globalScheduler_requestRetention": 0.9,
-  "#globalScheduler_w":
-    default_w.join(","),
+  "#globalScheduler_w": default_w.join(","),
 };

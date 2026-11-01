@@ -27,8 +27,16 @@ export async function POST(req: Request) {
         })
       );
     if (grant === "refresh_token")
-      return json(await refreshTokens(db, { refreshToken: need("refresh_token"), clientId: need("client_id") }));
-    throw new OAuthError("unsupported_grant_type", "Use authorization_code or refresh_token");
+      return json(
+        await refreshTokens(db, {
+          refreshToken: need("refresh_token"),
+          clientId: need("client_id"),
+        })
+      );
+    throw new OAuthError(
+      "unsupported_grant_type",
+      "Use authorization_code or refresh_token"
+    );
   } catch (e) {
     return oauthError(e);
   }

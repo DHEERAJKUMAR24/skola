@@ -19,7 +19,9 @@ const serwist = new Serwist({
     // Sync and auth must always hit the network; a cached pull would hide new data.
     {
       matcher: ({ url }) =>
-        /^\/(api|oauth|login|signup|forgot-password|\.well-known)(\/|$)/.test(url.pathname),
+        /^\/(api|oauth|login|signup|forgot-password|\.well-known)(\/|$)/.test(
+          url.pathname
+        ),
       handler: new NetworkOnly(),
     },
     ...defaultCache,

@@ -1,6 +1,6 @@
 import { Table } from "dexie";
-import { Grade, RecordLog, State } from "ts-fsrs";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { Grade, RecordLog, State } from "ts-fsrs";
 import {
   updateGlobalScheduler,
   useGlobalScheduler,

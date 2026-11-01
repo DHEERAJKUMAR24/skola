@@ -6,7 +6,8 @@ export const syncFlags = { applyingRemote: false };
 /** Tells the sync loop something changed locally, so it can push soon instead of polling. */
 export const LOCAL_CHANGE_EVENT = "local-change";
 const notify = () => {
-  if (typeof window !== "undefined") window.dispatchEvent(new Event(LOCAL_CHANGE_EVENT));
+  if (typeof window !== "undefined")
+    window.dispatchEvent(new Event(LOCAL_CHANGE_EVENT));
 };
 
 export interface Tombstone {
@@ -38,7 +39,11 @@ export function installSyncTracking(db: Database) {
       // shortcut: tombstone written after the delete commits; a tab closed in that instant loses it.
       this.onsuccess = () => {
         setTimeout(() =>
-          db.tombstones.put({ id: String(pk), table: name, updatedAt: Date.now() })
+          db.tombstones.put({
+            id: String(pk),
+            table: name,
+            updatedAt: Date.now(),
+          })
         );
       };
     });

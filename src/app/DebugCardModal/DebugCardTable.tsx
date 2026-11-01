@@ -1,10 +1,10 @@
 import { Text } from "@/components/ui/Text";
 import { NoteType } from "@/logic/note/note";
-import { Rating, State } from "ts-fsrs";
 import { useLiveQuery } from "dexie-react-hooks";
 import { Fragment } from "react";
-import { db } from "../../logic/db";
+import { Rating, State } from "ts-fsrs";
 import { Card } from "../../logic/card/card";
+import { db } from "../../logic/db";
 import "./DebugCardTable.css";
 
 const BASE = "debug-card-table";

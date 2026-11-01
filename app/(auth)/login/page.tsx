@@ -22,9 +22,15 @@ function LoginForm() {
         e.preventDefault();
         setBusy(true);
         setError(null);
-        const res = await signIn("credentials", { email, password, redirect: false });
+        const res = await signIn("credentials", {
+          email,
+          password,
+          redirect: false,
+        });
         if (res?.error) {
-          setError("Wrong email or password, or the account is temporarily locked.");
+          setError(
+            "Wrong email or password, or the account is temporarily locked."
+          );
           setBusy(false);
         } else {
           window.location.href = callback;
@@ -33,13 +39,33 @@ function LoginForm() {
     >
       <Stack gap="md" align="start">
         {error && <Alert variant="error">{error}</Alert>}
-        <TextInput label="Email" type="email" autoComplete="username" required value={email} onChange={(e) => setEmail(e.currentTarget.value)} />
-        <TextInput label="Password" type="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.currentTarget.value)} />
+        <TextInput
+          label="Email"
+          type="email"
+          autoComplete="username"
+          required
+          value={email}
+          onChange={(e) => setEmail(e.currentTarget.value)}
+        />
+        <TextInput
+          label="Password"
+          type="password"
+          autoComplete="current-password"
+          required
+          value={password}
+          onChange={(e) => setPassword(e.currentTarget.value)}
+        />
         <Button type="submit" variant="primary" disabled={busy}>
           Sign in
         </Button>
-        <a href={`/forgot-password?callbackUrl=${encodeURIComponent(callback)}`}>Forgot password?</a>
-        <a href={`/signup?callbackUrl=${encodeURIComponent(callback)}`}>Create an account</a>
+        <a
+          href={`/forgot-password?callbackUrl=${encodeURIComponent(callback)}`}
+        >
+          Forgot password?
+        </a>
+        <a href={`/signup?callbackUrl=${encodeURIComponent(callback)}`}>
+          Create an account
+        </a>
       </Stack>
     </form>
   );

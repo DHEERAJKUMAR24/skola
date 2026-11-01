@@ -9,11 +9,15 @@ let db: Db;
 
 beforeAll(async () => {
   const pg = new PGlite();
-  await pg.exec(fs.readFileSync("supabase/migrations/20261101000000_init.sql", "utf8"));
+  await pg.exec(
+    fs.readFileSync("supabase/migrations/20261101000000_init.sql", "utf8")
+  );
   db = {
     query: (text, params) => pg.query(text, params) as never,
     transaction: (fn) =>
-      pg.transaction((tx) => fn((text, params) => tx.query(text, params) as never)),
+      pg.transaction((tx) =>
+        fn((text, params) => tx.query(text, params) as never)
+      ),
   };
 });
 

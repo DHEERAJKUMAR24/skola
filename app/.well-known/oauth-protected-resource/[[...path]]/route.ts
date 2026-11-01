@@ -6,7 +6,10 @@ export const dynamic = "force-dynamic";
 export const OPTIONS = preflight;
 
 // RFC 9728 protected resource metadata. `/.well-known/oauth-protected-resource/mcp` describes the MCP resource.
-export async function GET(req: Request, ctx: { params: Promise<{ path?: string[] }> }) {
+export async function GET(
+  req: Request,
+  ctx: { params: Promise<{ path?: string[] }> }
+) {
   const o = origin(req);
   const { path } = await ctx.params;
   const known = audiences(o);

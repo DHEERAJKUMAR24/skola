@@ -7,7 +7,6 @@
     "@hello-pangea/dnd": "16.5.0",
     "@serwist/next": "^9.5.13",
     "@tabler/icons-react": "3.14.0",
-    "@tauri-apps/api": "^1.6.0",
     "@tiptap/core": "2.27.1",
     "@tiptap/extension-color": "2.27.1",
     "@tiptap/extension-hard-break": "2.27.1",
@@ -52,9 +51,8 @@
     "test:watch": "vitest",
     "extract": "i18next --config i18next-parser.config.mjs 'src/**/*.{ts,tsx}'",
     "format": "biome check --apply",
-    "tauri": "tauri",
     "dev": "next dev --webpack",
-    "db:push": "supabase db push"
+    "db:push": "npx supabase db push"
   },
   "eslintConfig": {
     "extends": [
@@ -76,9 +74,7 @@
   "devDependencies": {
     "@biomejs/biome": "1.9.4",
     "@electric-sql/pglite": "^0.5.14",
-    "@electric-sql/pglite-socket": "^0.2.17",
     "@react-grab/mcp": "^0.1.18",
-    "@tauri-apps/cli": "^2.10.0",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
     "@types/lodash": "4.17.0",
@@ -98,7 +94,6 @@
     "postcss-preset-mantine": "1.13.0",
     "postcss-simple-vars": "7.0.1",
     "react-grab": "^0.1.18",
-    "tsx": "^4.23.15",
     "typescript": "5.5.2",
     "vite": "5.2.13",
     "vitest": "^2.1.9"
