@@ -128,10 +128,10 @@ const add_cards: Tool = {
             question: { type: "string" },
             choices: { type: "array", items: { type: "string" } },
             correct: {
-              oneOf: [
-                { type: "integer" },
-                { type: "array", items: { type: "integer" } },
-              ],
+              type: "array",
+              items: { type: "integer" },
+              description:
+                "0-based positions of the right choices, e.g. [1]. A single number is accepted too.",
             },
             explanation: { type: "string" },
             items: { type: "array", items: { type: "string" } },
@@ -252,10 +252,10 @@ Any card also takes tags (replaces the note's tag list) and suspended.`,
       question: { type: "string" },
       choices: { type: "array", items: { type: "string" } },
       correct: {
-        oneOf: [
-          { type: "integer" },
-          { type: "array", items: { type: "integer" } },
-        ],
+        type: "array",
+        items: { type: "integer" },
+        description:
+          "0-based positions of the right choices, e.g. [1]. A single number is accepted too.",
       },
       explanation: { type: "string" },
       items: { type: "array", items: { type: "string" } },

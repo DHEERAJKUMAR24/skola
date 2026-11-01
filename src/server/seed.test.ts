@@ -72,11 +72,14 @@ export async function seed(db: Db) {
       throw new Error(`${name}: ${r.result.content[0].text}`);
     return JSON.parse(r.result.content[0].text);
   };
-  const { rows } = await db.query<{ n: number }>(
-    "SELECT COUNT(*)::int AS n FROM changes WHERE user_id = $1 AND tbl = 'decks'",
+  // The last deck is added last, so its picture card means a complete seed; anything else is a
+  // half-finished run on the demo account, which is wiped and redone.
+  const done = await db.query(
+    "SELECT 1 FROM changes WHERE user_id = $1 AND tbl = 'cards' AND data->'content'->>'type' = 'imageOcclusion' LIMIT 1",
     [user.id]
   );
-  if (rows[0].n > 0) return { email: SEED_EMAIL, created: false };
+  if (done.rows.length) return { email: SEED_EMAIL, created: false };
+  await db.query("DELETE FROM changes WHERE user_id = $1", [user.id]);
 
   const deck = async (name: string, cards: object[], parent_id?: string) => {
     const d = await call("create_deck", { name, parent_id });
@@ -187,6 +190,10 @@ it(
   }
 );
 
-it.skipIf(!process.env.SEED_DATABASE)("seeds the real database", async () => {
-  console.log(await seed(getDb()));
-});
+it.skipIf(!process.env.SEED_DATABASE)(
+  "seeds the real database",
+  { timeout: 600_000 },
+  async () => {
+    console.log(await seed(getDb()));
+  }
+);
