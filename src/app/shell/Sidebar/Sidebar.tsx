@@ -1,3 +1,4 @@
+import { ProfileMenu } from "@/components/Profile/Profile";
 import { IconButton } from "@/components/ui/IconButton";
 import { NavItem } from "@/components/ui/NavItem";
 import { breakpoints } from "@/lib/breakpoints";
@@ -109,6 +110,10 @@ function Sidebar({ menuOpened, menuHandlers }: SidebarProps) {
           </nav>
 
           <DeckList minimalMode={minimalMode} />
+        </div>
+
+        <div className={`${BASE}__bottom`}>
+          <ProfileMenu variant="card" minimal={minimalMode} />
         </div>
       </div>
     </aside>

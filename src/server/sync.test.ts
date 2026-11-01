@@ -32,7 +32,7 @@ const row = (id: string, updatedAt: number, extra = {}) => ({
 it("pushes, pulls in seq order, and ignores older or equal writes", async () => {
   await pushRows(db, "u1", [row("a", 100), row("b", 100)]);
   const stale = await pushRows(db, "u1", [row("a", 50), row("b", 100)]);
-  expect(stale.seq).toBe(2);
+  expect(stale).toEqual({ seq: 2, applied: 0 }); // both older or equal: nothing applied
 
   const pulled = await pullRows(db, "u1", 0);
   expect(pulled.rows.map((r) => r.id)).toEqual(["a", "b"]);

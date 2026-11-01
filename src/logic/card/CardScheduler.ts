@@ -1,38 +1,45 @@
-import { useEffect } from "react";
-import { FSRS, default_w, generatorParameters } from "ts-fsrs";
+import { useLiveQuery } from "dexie-react-hooks";
+import { useCallback, useMemo } from "react";
+import type { FSRS } from "ts-fsrs";
+import { db } from "../db";
+import {
+  type DeckFsrsOptions,
+  resolveParams,
+  schedulerFor,
+} from "../deck/fsrsOptions";
 import { defaultSettings } from "../settings/defaultSettings";
 import { useSetting } from "../settings/hooks/useSetting";
-import { setSetting } from "../settings/setSetting";
 
-const scheduler = new FSRS(generatorParameters());
-
-export function useGlobalScheduler() {
+/**
+ * Returns a function that picks the right FSRS scheduler for a deck: that deck's own
+ * options, layered over the global settings (which older decks still rely on).
+ */
+export function useSchedulerFor(): (deckId: string) => FSRS {
   const [maximumInterval] = useSetting("#globalScheduler_maximumInterval");
-  const [requestRetention] = useSetting("#globalScheduler_requestRetention");
+  const [retention] = useSetting("#globalScheduler_requestRetention");
   const [w] = useSetting("#globalScheduler_w");
 
-  useEffect(() => {
-    const parsedW = (w ?? defaultSettings["#globalScheduler_w"])
-      .split(",")
-      .map((x) => Number.parseFloat(x));
-    // Weights saved for older FSRS versions have a different length; fall back.
-    scheduler.parameters = generatorParameters({
-      maximum_interval: maximumInterval,
-      request_retention: requestRetention,
-      w: parsedW.length === default_w.length ? parsedW : default_w,
-    });
-  }, [maximumInterval, requestRetention, w]);
-  return scheduler;
-}
+  const optionsByDeck = useLiveQuery(async () => {
+    const decks = await db.decks.toArray();
+    return new Map<string, DeckFsrsOptions>(
+      decks.map((d) => [d.id, d.options])
+    );
+  }, []);
 
-export function updateGlobalScheduler() {
-  setSetting(
-    "#globalScheduler_maximumInterval",
-    scheduler.parameters.maximum_interval
+  const global = useMemo(
+    () => ({
+      retention,
+      maximumInterval,
+      w: (w ?? defaultSettings["#globalScheduler_w"])
+        .split(",")
+        .map((x) => Number.parseFloat(x)),
+    }),
+    [retention, maximumInterval, w]
   );
-  setSetting(
-    "#globalScheduler_requestRetention",
-    scheduler.parameters.request_retention
+
+  return useCallback(
+    (deckId: string) =>
+      schedulerFor(resolveParams(optionsByDeck?.get(deckId), global)),
+    [optionsByDeck, global]
   );
-  setSetting("#globalScheduler_w", scheduler.parameters.w.join(","));
 }

@@ -78,7 +78,7 @@ export default function SettingsView() {
           </Tabs.Tab>
           <Tabs.Tab value="sync">
             <IconCloud size={18} />
-            {t("settings.sync.title", "Sync")}
+            {t("settings.sync.title", "Account")}
           </Tabs.Tab>
           <Tabs.Tab value="about">
             <IconInfoCircle size={18} />

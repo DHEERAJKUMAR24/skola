@@ -1,0 +1,38 @@
+.deck-fsrs {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md);
+  border: 1px solid var(--theme-neutral-200);
+  border-radius: var(--radius-lg);
+  background: var(--theme-neutral-100);
+}
+
+.deck-fsrs__head {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.deck-fsrs__title {
+  font-weight: 600;
+  color: var(--theme-neutral-900);
+}
+
+.deck-fsrs__badge {
+  padding: 1px var(--spacing-sm);
+  border-radius: 999px;
+  background: var(--theme-primary-100);
+  color: var(--theme-primary-800);
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+}
+
+.deck-fsrs__custom {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+  margin-top: var(--spacing-xs);
+  padding-top: var(--spacing-md);
+  border-top: 1px dotted var(--theme-neutral-300);
+}

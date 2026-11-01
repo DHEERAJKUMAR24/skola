@@ -2,12 +2,14 @@ import { ColorIdentifier } from "@/lib/ColorIdentifier";
 import { v4 as uuidv4 } from "uuid";
 import { db } from "../db";
 import { Deck } from "./deck";
+import { type DeckFsrsOptions, FSRS_DEFAULTS } from "./fsrsOptions";
 
 export async function newDeck(
   name: string,
   superDeck?: Deck,
   description?: string,
-  color?: ColorIdentifier
+  color?: ColorIdentifier,
+  fsrs: DeckFsrsOptions = FSRS_DEFAULTS
 ): Promise<string> {
   const uuid = uuidv4();
 
@@ -40,6 +42,7 @@ export async function newDeck(
     options: {
       newToReviewRatio: 0.5,
       dailyNewCards: 25,
+      ...fsrs,
     },
   });
   return uuid;

@@ -25,20 +25,22 @@ export function validateRows(rows: unknown): PushRow[] | null {
   return rows as PushRow[];
 }
 
-/** Applies rows that are strictly newer than stored ones; returns the user's latest seq. */
+/** Applies rows that are strictly newer than stored ones; returns the user's latest seq and how many rows were applied. */
 export async function pushRows(db: Db, userId: string, rows: PushRow[]) {
   return db.transaction(async (q) => {
     // Serialises pushes per user so seq order matches commit order; otherwise a puller could skip a row.
     await q("SELECT pg_advisory_xact_lock(hashtext($1))", [userId]);
+    let applied = 0;
     for (const r of rows) {
-      await q(
+      const res = await q(
         `INSERT INTO changes (user_id, tbl, id, data, updated_at, deleted, seq)
          VALUES ($1, $2, $3, $4::jsonb, $5, $6,
            (SELECT COALESCE(MAX(seq), 0) + 1 FROM changes WHERE user_id = $1))
          ON CONFLICT (user_id, tbl, id) DO UPDATE SET
            data = EXCLUDED.data, updated_at = EXCLUDED.updated_at,
            deleted = EXCLUDED.deleted, seq = EXCLUDED.seq
-         WHERE EXCLUDED.updated_at > changes.updated_at`,
+         WHERE EXCLUDED.updated_at > changes.updated_at
+         RETURNING 1`,
         [
           userId,
           r.tbl,
@@ -48,12 +50,13 @@ export async function pushRows(db: Db, userId: string, rows: PushRow[]) {
           !!r.deleted,
         ]
       );
+      applied += res.rows.length;
     }
     const max = await q<{ seq: string }>(
       "SELECT COALESCE(MAX(seq), 0) AS seq FROM changes WHERE user_id = $1",
       [userId]
     );
-    return { seq: Number(max.rows[0].seq) };
+    return { seq: Number(max.rows[0].seq), applied };
   });
 }
 

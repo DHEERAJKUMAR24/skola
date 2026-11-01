@@ -1,10 +1,7 @@
 import { Table } from "dexie";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Grade, RecordLog, State } from "ts-fsrs";
-import {
-  updateGlobalScheduler,
-  useGlobalScheduler,
-} from "./card/CardScheduler";
+import { useSchedulerFor } from "./card/CardScheduler";
 import { Card } from "./card/card";
 import { useCardsWith } from "./card/hooks/useCardsWith";
 import { updateCardModel } from "./card/updateCardModel";
@@ -55,7 +52,7 @@ export function useLearning(
     cardQuerier.dependencies
   );
 
-  const scheduler = useGlobalScheduler();
+  const schedulerFor = useSchedulerFor();
 
   //Time critical cards are cards that are due today / should be done within this learning session (5-10 min interval). timeCriticalCards should be sorted by due date
   const [timeCriticalCards, setTimeCriticalCards] = useState<Card<NoteType>[]>(
@@ -180,7 +177,6 @@ export function useLearning(
       //If there are no cards left finish the learning session
     } else {
       setIsFinished(true);
-      updateGlobalScheduler();
     }
   }, [timeCriticalCards, newCards, toReviewCards, learnedCards, options]);
 
@@ -196,7 +192,7 @@ export function useLearning(
   const currentCardRepeatInfo = useMemo(() => {
     if (currentCard) {
       // Cards stored by the old fsrs.js lack learning_steps.
-      return scheduler.repeat(
+      return schedulerFor(currentCard.deck).repeat(
         {
           ...currentCard.model,
           learning_steps: currentCard.model.learning_steps ?? 0,
@@ -206,7 +202,7 @@ export function useLearning(
     } else {
       return null;
     }
-  }, [currentCard]);
+  }, [currentCard, schedulerFor]);
 
   //Answering the current card with the given rating
   const answer = useCallback(

@@ -9,7 +9,7 @@ import StatsView from "@/app/statistics/StatsView";
 import { useEffect } from "react";
 import { Navigate, RouterProvider, createHashRouter } from "react-router-dom";
 import { syncUrl } from "./logic/auth";
-import { startSync } from "./logic/sync";
+import { startSync } from "./logic/syncScheduler";
 
 const router = createHashRouter(
   [
@@ -60,7 +60,7 @@ const router = createHashRouter(
 
 export default function ClientRoot() {
   useEffect(() => {
-    if (syncUrl) startSync(syncUrl);
+    if (syncUrl) startSync();
     ensurePersistentStorage();
   }, []);
 

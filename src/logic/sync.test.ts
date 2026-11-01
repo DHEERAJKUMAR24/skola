@@ -156,3 +156,30 @@ it("skips a malformed pulled row instead of failing the whole pull", async () =>
   expect(await db.cards.get("good")).toMatchObject({ id: "good", deck: "d" });
   expect(localStorage.getItem("sync.lastSeq")).toBe("2");
 });
+
+it("skips re-downloading its own rows when nobody else wrote", async () => {
+  localStorage.setItem("sync.lastSeq", "4");
+  const urls: string[] = [];
+  vi.stubGlobal("fetch", async (url: string) => {
+    urls.push(url);
+    if (url.includes("/push")) return Response.json({ seq: 6, applied: 2 });
+    return Response.json({ rows: [], seq: 6, more: false });
+  });
+  await db.cards.add({ id: "echo1", deck: "d" } as never);
+  await syncOnce("http://x", false, false); // push only
+  expect(localStorage.getItem("sync.lastSeq")).toBe("6"); // 6 - 2 === 4: cursor moved past our rows
+});
+
+it("keeps the cursor when another device wrote in between", async () => {
+  localStorage.setItem("sync.lastSeq", "4");
+  vi.stubGlobal("fetch", async (url: string) =>
+    Response.json(
+      url.includes("/push")
+        ? { seq: 9, applied: 2 }
+        : { rows: [], seq: 9, more: false }
+    )
+  );
+  await db.cards.add({ id: "echo2", deck: "d" } as never);
+  await syncOnce("http://x", false, false);
+  expect(localStorage.getItem("sync.lastSeq")).toBe("4"); // 9 - 2 !== 4: foreign rows still to pull
+});

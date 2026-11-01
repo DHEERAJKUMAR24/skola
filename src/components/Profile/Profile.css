@@ -1,0 +1,139 @@
+.profile__avatar {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+
+.profile__face {
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--theme-primary-600);
+  color: var(--theme-primary-50);
+  font-weight: 600;
+  line-height: 1;
+  user-select: none;
+}
+
+.profile__face--guest {
+  background: var(--theme-neutral-200);
+  color: var(--theme-neutral-600);
+}
+
+.profile__ring {
+  position: absolute;
+  inset: 0;
+  /* a global svg rule shrinks svgs to 1em, so size the ring explicitly */
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+  pointer-events: none;
+}
+
+.profile__ring-track {
+  fill: none;
+  stroke: var(--theme-neutral-200);
+  stroke-width: 2;
+}
+
+.profile__ring-arc {
+  fill: none;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+/* Drains from full to empty over the time left before the push is sent. */
+.profile__ring-arc--pending {
+  stroke: var(--theme-primary-500);
+  animation: profile-drain var(--ring-ms, 10s) linear forwards;
+}
+
+.profile__ring-arc--syncing {
+  stroke: var(--theme-primary-500);
+  animation: profile-spin 0.9s linear infinite;
+}
+
+.profile__ring-arc--error {
+  stroke: var(--theme-red-500);
+}
+
+.profile__ring-arc--offline {
+  stroke: var(--theme-neutral-400);
+  stroke-dasharray: 3 4;
+}
+
+@keyframes profile-drain {
+  from {
+    stroke-dashoffset: 0;
+  }
+  to {
+    stroke-dashoffset: var(--ring-c);
+  }
+}
+
+@keyframes profile-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .profile__ring-arc--pending,
+  .profile__ring-arc--syncing {
+    animation: none;
+  }
+}
+
+.profile__trigger {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  min-width: 0;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-lg);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.profile__trigger--card {
+  width: 100%;
+  padding: var(--spacing-xs);
+}
+
+.profile__trigger--card:hover {
+  background: var(--theme-neutral-200);
+}
+
+.profile__text,
+.profile__menu-head {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.profile__menu-head {
+  padding: var(--spacing-sm);
+  border-bottom: 1px dotted var(--theme-neutral-300);
+  margin-bottom: var(--spacing-xs);
+}
+
+.profile__email {
+  overflow: hidden;
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--theme-neutral-900);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.profile__status {
+  font-size: var(--font-size-xs);
+  color: var(--theme-neutral-600);
+}

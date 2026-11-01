@@ -1,3 +1,4 @@
+import { ProfileMenu } from "@/components/Profile/Profile";
 import { HamburgerButton } from "@/components/ui/HamburgerButton";
 import { breakpoints } from "@/lib/breakpoints";
 import { useMediaQuery } from "@/lib/hooks/useMediaQuery";
@@ -70,6 +71,7 @@ export default function Header({ menuOpened, menuHandlers }: HeaderProps) {
           />
         )}
         <AppHeaderOutlet />
+        {!routeIsLearn && <ProfileMenu variant="icon" />}
       </div>
     </header>
   );

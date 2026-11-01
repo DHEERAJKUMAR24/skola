@@ -23,4 +23,11 @@ export interface Deck {
 export interface DeckOptions {
   newToReviewRatio: number;
   dailyNewCards: number;
+  /** FSRS settings for this deck. Decks that do not set them use the global settings. */
+  desiredRetention?: number;
+  maximumInterval?: number;
+  /** Steps like ["1m", "10m"]; an empty list skips short-term learning. */
+  learningSteps?: string[];
+  relearningSteps?: string[];
+  enableFuzz?: boolean;
 }
