@@ -62,6 +62,9 @@ export function InfoTip({ children, label = "More information" }: Props) {
           <span
             id={id}
             role="tooltip"
+            popover="manual"
+            // The top layer keeps the bubble above modal dialogs, which a z-index cannot do.
+            ref={(el) => el?.showPopover?.()}
             className="info-tip__bubble"
             style={{ top: pos.top, left: pos.left, width: BUBBLE_WIDTH }}
           >

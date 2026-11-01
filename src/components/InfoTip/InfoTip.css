@@ -22,6 +22,9 @@
 
 .info-tip__bubble {
   position: fixed;
+  inset: auto;
+  margin: 0;
+  overflow: visible;
   z-index: 10000;
   padding: var(--spacing-sm) var(--spacing-md);
   border: 1px solid var(--theme-neutral-300);

@@ -165,7 +165,7 @@ export async function assignPreset(presetId: string, deckIds: string[]) {
 
 export function usePresets() {
   return useLiveQuery(
-    async () => (await db.presets.toArray()).sort(byName),
+    async () => [...(await db.presets.toArray())].sort(byName),
     []
   );
 }

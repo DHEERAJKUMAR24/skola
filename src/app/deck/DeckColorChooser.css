@@ -8,18 +8,34 @@
 .deck-color-chooser__color-options {
   display: flex;
   flex-direction: row;
-  gap: var(--spacing-sm);
+  gap: var(--spacing-md);
   flex-wrap: wrap;
 }
 
 .deck-color-chooser__color-button {
-  border: 1px solid;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid;
   border-radius: var(--radius-full);
-  width: var(--icon-size-lg);
-  height: var(--icon-size-lg);
+  width: 2.25rem;
+  height: 2.25rem;
+  color: #fff;
   cursor: pointer;
+  transition: transform 140ms ease, box-shadow 140ms ease;
+}
+
+.deck-color-chooser__color-button:hover {
+  transform: scale(1.12);
+}
+
+.deck-color-chooser__color-button:focus-visible {
+  outline: 2px solid var(--theme-neutral-900);
+  outline-offset: 3px;
 }
 
 .deck-color-chooser__color-button--selected {
-  outline: 2px solid var(--theme-neutral-900);
+  transform: scale(1.12);
+  box-shadow: 0 0 0 3px var(--theme-neutral-50), 0 0 0 5px
+    var(--theme-neutral-900);
 }
