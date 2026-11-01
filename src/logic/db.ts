@@ -3,6 +3,7 @@ import "dexie-export-import";
 import { Card } from "./card/card";
 import { ReviewLogRecord, toReviewLogRecord } from "./card/reviewLog";
 import { Deck } from "./deck/deck";
+import type { StudyPreset } from "./deck/presets";
 import { NoteType } from "./note/note";
 import { Note } from "./note/note";
 import { Settings, SettingsValues } from "./settings/Settings";
@@ -17,6 +18,7 @@ export class Database extends Dexie {
   settings!: Table<Settings<keyof SettingsValues>>;
   reviewLogs!: Table<ReviewLogRecord>;
   tombstones!: Table<Tombstone>;
+  presets!: Table<StudyPreset>;
 
   constructor() {
     super("skola_db", { cache: "immutable" });
@@ -53,6 +55,20 @@ export class Database extends Dexie {
         await tx.table("reviewLogs").bulkPut(logs);
       });
     this.version(24).stores({ tombstones: "id, updatedAt" });
+    this.version(25).stores({
+      notes: "id, deck, sortField, *linkedNotes, *tags",
+    });
+    this.version(26)
+      .stores({ presets: "id" })
+      .upgrade(async (tx) => {
+        // Settings saved before they synced have no updatedAt; stamp them so they upload once.
+        await tx
+          .table("settings")
+          .toCollection()
+          .modify((s: { updatedAt?: number }) => {
+            s.updatedAt ??= Date.now();
+          });
+      });
     installSyncTracking(this);
     this.open();
   }

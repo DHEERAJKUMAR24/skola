@@ -4,6 +4,7 @@ import { Deck } from "../deck/deck";
 import { NoteContent } from "./NoteContent";
 import { createNoteSkeleton } from "./createNoteSkeleton";
 import { NoteType } from "./note";
+import { normalizeTags } from "./tags";
 
 /**
  * This function creates a new note in the database.
@@ -13,11 +14,13 @@ import { NoteType } from "./note";
 
 export async function newNote<T extends NoteType>(
   deck: Deck,
-  content: NoteContent<T>
+  content: NoteContent<T>,
+  tags?: string[]
 ) {
   const note = {
     ...createNoteSkeleton(deck.id),
     content,
+    ...(tags?.length ? { tags: normalizeTags(tags) } : {}),
     sortField: getAdapterOfType(content.type).getSortFieldFromNoteContent(
       content
     ),

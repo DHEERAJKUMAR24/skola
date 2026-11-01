@@ -6,6 +6,7 @@ export const defaultSettings: SettingsValues = {
   "#useVisualFeedback": true,
   "#developerMode": false,
   "#showShortcutHints": true,
+  "#toursSeen": [],
 
   "#colorSchemePreference": "auto",
   "#densityPreference": "auto",

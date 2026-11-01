@@ -91,7 +91,11 @@ function LearnViewHeader({
         </div>
 
         <div className={BASE + "__right-group"}>
-          <CardMenu card={currentCard} onDelete={controller.requestNextCard} />
+          <CardMenu
+            card={currentCard}
+            onDelete={controller.requestNextCard}
+            onHidden={controller.requestNextCard}
+          />
         </div>
       </div>
       <Progress

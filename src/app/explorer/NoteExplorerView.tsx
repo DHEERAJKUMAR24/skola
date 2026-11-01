@@ -2,16 +2,19 @@ import { AppHeaderContent } from "@/app/shell/Header/Header";
 import { AppBreadcrumbs } from "@/components/AppBreadcrumbs";
 import { useDebouncedState } from "@/lib/hooks/useDebouncedState";
 import { useDocumentTitle } from "@/lib/hooks/useDocumentTitle";
+import { descendantIds } from "@/logic/deck/deckPath";
 import { useDecks } from "@/logic/deck/hooks/useDecks";
 import { getNote } from "@/logic/note/getNote";
 import { useNotesWith } from "@/logic/note/hooks/useNotesWith";
 import { NoteSortFunction, NoteSorts } from "@/logic/note/sort";
+import { useAllTags } from "@/logic/note/tags";
 import { t } from "i18next";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import NoteTable from "../NoteTable/NoteTable";
 import EditNoteModal from "../editor/EditNoteModal";
 import { EditNoteView } from "../editor/EditNoteView";
+import { NoteBulkBar } from "./NoteBulkBar";
 import { NoteExplorerControls } from "./NoteExplorerControls";
 import { useNoteSelection } from "./hooks/useNoteSelection";
 import "./NoteExplorerView.css";
@@ -33,11 +36,13 @@ function NoteExplorerView() {
   const noteParam = searchParams.get("note");
   const sortParam = searchParams.get("sort");
   const sortDirParam = searchParams.get("sortDir");
+  const tagParam = searchParams.get("tag") ?? undefined;
 
   const deckId =
     deckParam === ALL_DECKS_ID ? undefined : (deckParam ?? undefined);
 
   const [decks] = useDecks();
+  const allTags = useAllTags();
 
   const [filter, setFilter, immediateFilter] = useDebouncedState<string>(
     "",
@@ -74,18 +79,25 @@ function NoteExplorerView() {
     [setSearchParams]
   );
 
+  const deckScope = deckId ? descendantIds(deckId, decks ?? []) : undefined;
+
   const [notes] = useNotesWith(
     (n) =>
       n
         .orderBy("sortField")
-        .filter(
-          (note) =>
-            note.sortField.toLowerCase().includes(filter.toLowerCase()) &&
-            (deckId === undefined || note.deck === deckId)
-        )
+        .filter((note) => {
+          const f = filter.toLowerCase();
+          const matchesText =
+            note.sortField.toLowerCase().includes(f) ||
+            !!note.tags?.some((t) => t.includes(f));
+          // Showing a domain or subject includes everything below it.
+          const inDeck = deckScope === undefined || deckScope.has(note.deck);
+          const hasTag = !tagParam || !!note.tags?.includes(tagParam);
+          return matchesText && inDeck && hasTag;
+        })
         .toArray()
         .then((m) => m.sort(sort[0](sort[1] ? 1 : -1))),
-    [deckId, filter, sort]
+    [deckId, filter, sort, tagParam, decks]
   );
 
   const [editNoteModalOpened, setEditNoteModalOpened] =
@@ -128,6 +140,19 @@ function NoteExplorerView() {
     }
   }, [handleKeyDown]);
 
+  const handleTagSelect = useCallback(
+    (tag: string | null) => {
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        if (tag) next.set("tag", tag);
+        else next.delete("tag");
+        next.delete("note");
+        return next;
+      });
+    },
+    [setSearchParams]
+  );
+
   const handleDeckSelect = useCallback(
     (selectedDeckId: string | null) => {
       setSearchParams((prev) => {
@@ -156,7 +181,14 @@ function NoteExplorerView() {
         onDeckSelect={handleDeckSelect}
         filterValue={immediateFilter}
         onFilterChange={setFilter}
+        tags={allTags}
+        selectedTag={tagParam ?? ""}
+        onTagSelect={handleTagSelect}
       />
+
+      {selectedNoteIds.size > 0 && (
+        <NoteBulkBar selectedIds={[...selectedNoteIds]} decks={decks} />
+      )}
 
       <div className={`${BASE}__container`}>
         <section

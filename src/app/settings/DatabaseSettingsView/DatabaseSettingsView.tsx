@@ -9,6 +9,7 @@ import { exportDB, importInto } from "dexie-export-import";
 import { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { db } from "../../../logic/db";
+import { seedJsInterview } from "../../../logic/seed/jsInterview";
 import "./DatabaseSettingsView.css";
 import Section from "../Section";
 import StorageSection from "./StorageSection";
@@ -20,6 +21,8 @@ export default function DatabaseSettingsView() {
   const [deleteAllDataModalOpened, setDeleteAllDataModalOpened] =
     useState<boolean>(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [seeding, setSeeding] = useState(false);
+  const [seedMessage, setSeedMessage] = useState<string | null>(null);
 
   return (
     <>
@@ -38,6 +41,36 @@ export default function DatabaseSettingsView() {
         >
           Export All
         </Button>
+        <Section title="Sample data">
+          <p>
+            Programming Languages &gt; JavaScript &gt; 7 concepts with 42
+            interview cards, tags, an exam date three weeks away, and some past
+            study history so the forecast has something to show.
+          </p>
+          <Button
+            disabled={seeding}
+            onClick={async () => {
+              setSeeding(true);
+              setSeedMessage(null);
+              try {
+                const r = await seedJsInterview({ withHistory: true });
+                setSeedMessage(
+                  r.created
+                    ? `Added ${r.decks} decks and ${r.notes} cards.`
+                    : "The sample is already loaded."
+                );
+                navigate(`/deck/${r.domainId}`);
+              } catch (e) {
+                setSeedMessage(`Could not add the sample: ${e}`);
+              } finally {
+                setSeeding(false);
+              }
+            }}
+          >
+            {seeding ? "Adding..." : "Load JavaScript interview sample"}
+          </Button>
+          {seedMessage && <output>{seedMessage}</output>}
+        </Section>
         <Section title="Danger Zone" className={`${BASE}__danger-zone`}>
           <p className={`${BASE}__danger-text`}>
             This section contains potentially dangerous settings. Proceed with

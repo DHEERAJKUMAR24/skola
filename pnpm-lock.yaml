@@ -74,6 +74,12 @@ importers:
       dexie-react-hooks:
         specifier: 1.1.7
         version: 1.1.7(@types/react@19.2.14)(dexie@4.3.0)(react@19.2.4)
+      driver.js:
+        specifier: ^1.10.2
+        version: 1.10.2
+      fsrs-browser:
+        specifier: ^6.6.0
+        version: 6.6.0
       html-react-parser:
         specifier: 5.1.8
         version: 5.1.8(@types/react@19.2.14)(react@19.2.4)
@@ -2300,6 +2306,9 @@ packages:
   domutils@3.2.2:
     resolution: {integrity: sha512-6kZKyUajlDuqlHKVX1w7gyslj9MPIXzIFiz/rGu35uC1wMi+kMhQwGhl4lt9unC9Vb9INnY9Z3/ZA3+FhASLaw==}
 
+  driver.js@1.10.2:
+    resolution: {integrity: sha512-L/EMTriJPAmg+5kIFmrjzt3TI+1NblhHOV/UZkfpgU/uxhSflGheynMBxk5oImDSy6seAEkIl6MzNOc0zdoKtg==}
+
   dunder-proto@1.0.1:
     resolution: {integrity: sha512-KIN/nDJBQRcXw0MLVhZE9iQHmG68qAVIBg9CqmUYjmQIhgij9U5MFvrqkUL5FbtyyzZuOeOt0zdeRe4UY7ct+A==}
     engines: {node: '>= 0.4'}
@@ -2576,6 +2585,9 @@ packages:
     resolution: {integrity: sha512-5xoDfX+fL7faATnagmWPpbFtwh/R77WmMMqqHGS65C3vvB0YHrgF+B1YmZ3441tMj5n63k0212XNoJwzlhffQw==}
     engines: {node: ^8.16.0 || ^10.6.0 || >=11.0.0}
     os: [darwin]
+
+  fsrs-browser@6.6.0:
+    resolution: {integrity: sha512-Q79mC7dZCku1zqpEnO041pxlAAYoldTtxYg8zg8SbmtKsbD5xOokaLdiJSv99aqDIplySsfJnrYn/yyQhE4KhA==}
 
   function-bind@1.1.2:
     resolution: {integrity: sha512-7XHNxH7qX9xG5mIwxkhumTox/MIRNcOgDrxWsMt2pAr23WHp6MrRlN7FBSFpCpr+oVO0F744iUgR82nJMfG2SA==}
@@ -6087,6 +6099,8 @@ snapshots:
       domelementtype: 2.3.0
       domhandler: 5.0.3
 
+  driver.js@1.10.2: {}
+
   dunder-proto@1.0.1:
     dependencies:
       call-bind-apply-helpers: 1.0.2
@@ -6501,6 +6515,8 @@ snapshots:
 
   fsevents@2.3.3:
     optional: true
+
+  fsrs-browser@6.6.0: {}
 
   function-bind@1.1.2: {}
 

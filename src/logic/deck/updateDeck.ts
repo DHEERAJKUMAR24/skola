@@ -1,13 +1,13 @@
 import { ColorIdentifier } from "@/lib/ColorIdentifier";
 import { db } from "../db";
-import type { DeckFsrsOptions } from "./fsrsOptions";
+import type { DeckOptions } from "./deck";
 
 export async function updateDeck(
   id: string,
   name: string,
   description?: string,
   color?: ColorIdentifier,
-  fsrs?: DeckFsrsOptions
+  fsrs?: Partial<DeckOptions>
 ): Promise<void> {
   const current = await db.decks.get(id);
   await db.decks.update(id, {
@@ -15,6 +15,15 @@ export async function updateDeck(
     description,
     color,
     // Merge so the unrelated option fields (daily limits, ratio) are kept.
-    ...(fsrs && current ? { options: { ...current.options, ...fsrs } } : {}),
+    ...(fsrs && current
+      ? { options: withoutUndefined({ ...current.options, ...fsrs }) }
+      : {}),
   });
+}
+
+/** Saved options never carry empty keys; an unset exam date really is gone. */
+function withoutUndefined<T extends object>(o: T): T {
+  return Object.fromEntries(
+    Object.entries(o).filter(([, v]) => v !== undefined)
+  ) as T;
 }

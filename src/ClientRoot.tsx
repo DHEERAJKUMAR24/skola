@@ -6,6 +6,7 @@ import HomeView from "@/app/home/HomeView";
 import LearnView from "@/app/learn/LearnView/LearnView";
 import SettingsView from "@/app/settings/SettingsView";
 import StatsView from "@/app/statistics/StatsView";
+import { ensureDefaultPreset } from "@/logic/deck/presets";
 import { useEffect } from "react";
 import { Navigate, RouterProvider, createHashRouter } from "react-router-dom";
 import { syncUrl } from "./logic/auth";
@@ -62,6 +63,7 @@ export default function ClientRoot() {
   useEffect(() => {
     if (syncUrl) startSync();
     ensurePersistentStorage();
+    void ensureDefaultPreset();
   }, []);
 
   return <RouterProvider router={router} />;

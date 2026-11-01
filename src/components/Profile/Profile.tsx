@@ -1,8 +1,10 @@
+import { startTourHere } from "@/components/Tour/TourHost";
 import { Menu, MenuItem } from "@/components/ui/Menu";
 import { signOut, startLogin, useAuthEmail } from "@/logic/auth";
 import { syncNow } from "@/logic/syncScheduler";
 import { type SyncStatus, useSyncStatus } from "@/logic/syncStatus";
 import {
+  IconHelp,
   IconLogin,
   IconLogout,
   IconRefresh,
@@ -152,6 +154,12 @@ export function ProfileMenu({ variant, minimal = false }: ProfileMenuProps) {
         );
       }}
     >
+      <MenuItem
+        leftSection={<IconHelp size={16} />}
+        onClick={pick(startTourHere)}
+      >
+        Take a tour of this page
+      </MenuItem>
       {email ? (
         <>
           <div className={`${BASE}__menu-head`}>

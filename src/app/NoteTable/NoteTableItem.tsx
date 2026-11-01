@@ -1,3 +1,4 @@
+import { TagChips } from "@/components/TagChips/TagChips";
 import { Note, NoteType } from "@/logic/note/note";
 import { NoteWithComparableDeckName } from "@/logic/note/sort";
 import { memo } from "react";
@@ -53,7 +54,7 @@ export const NoteTableItem = memo(
 
     const noteWithDeckName = note as NoteWithComparableDeckName;
 
-    const getCellContent = (columnKey: string) => {
+    const getCellContent = (columnKey: string): React.ReactNode => {
       switch (columnKey) {
         case "name":
           return note.sortField;
@@ -63,6 +64,8 @@ export const NoteTableItem = memo(
           return noteTypeLabels[note.content.type];
         case "deckName":
           return noteWithDeckName.deckName || "";
+        case "tags":
+          return <TagChips tags={note.tags} />;
         default:
           return "";
       }
@@ -100,6 +103,7 @@ export const NoteTableItem = memo(
 
     return (
       prevProps.note.id === nextProps.note.id &&
+      prevProps.note.tags === nextProps.note.tags &&
       prevProps.isSelected === nextProps.isSelected &&
       prevProps.isOpened === nextProps.isOpened &&
       prevProps.visibleColumns === nextProps.visibleColumns &&

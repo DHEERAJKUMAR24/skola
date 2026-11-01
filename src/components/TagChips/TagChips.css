@@ -1,0 +1,27 @@
+.tag-chips {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.tag-chips__chip {
+  padding: 1px 8px;
+  border: 1px solid var(--theme-neutral-300);
+  border-radius: 999px;
+  background: var(--theme-neutral-100);
+  color: var(--theme-neutral-700);
+  font: inherit;
+  font-size: var(--font-size-xs);
+  line-height: 1.5;
+  white-space: nowrap;
+}
+
+.tag-chips__chip--button {
+  cursor: pointer;
+}
+
+.tag-chips__chip--button:hover {
+  background: var(--theme-primary-100);
+  border-color: var(--theme-primary-400);
+  color: var(--theme-primary-900);
+}

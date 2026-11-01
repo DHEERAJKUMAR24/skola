@@ -10,12 +10,14 @@ import { Grade } from "ts-fsrs";
 interface UseLearnSessionOptions {
   deck: Deck | undefined;
   learnAll: boolean;
+  cram?: boolean;
   newToReviewRatio: number;
 }
 
 export function useLearnSession({
   deck,
   learnAll,
+  cram,
   newToReviewRatio,
 }: UseLearnSessionOptions) {
   const controller = useLearning(
@@ -25,6 +27,7 @@ export function useLearnSession({
     },
     {
       learnAll,
+      cram,
       newToReviewRatio,
       sort: CardSorts.byCreationDate(1),
     }

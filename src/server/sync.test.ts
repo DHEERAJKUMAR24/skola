@@ -59,3 +59,17 @@ it("validates rows", () => {
   expect(validateRows([{ tbl: "evil", id: "x", updatedAt: 1 }])).toBeNull();
   expect(validateRows("nope")).toBeNull();
 });
+
+it("accepts settings and presets rows", () => {
+  expect(
+    validateRows([
+      {
+        tbl: "settings",
+        id: "#language",
+        data: { key: "#language" },
+        updatedAt: 1,
+      },
+      { tbl: "presets", id: "default", data: {}, updatedAt: 1 },
+    ])
+  ).not.toBeNull();
+});

@@ -26,6 +26,8 @@
     "dexie": "^4.3.0",
     "dexie-export-import": "4.1.1",
     "dexie-react-hooks": "1.1.7",
+    "driver.js": "^1.10.2",
+    "fsrs-browser": "^6.6.0",
     "html-react-parser": "5.1.8",
     "html-to-text": "9.0.5",
     "i18next": "23.15.1",

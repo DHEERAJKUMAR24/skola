@@ -39,7 +39,9 @@ function LearnView() {
     closeQuickAdd,
   } = useLearnSession({
     deck,
-    learnAll: params === "all",
+    // "cram" reviews everything once and leaves the FSRS schedule untouched.
+    learnAll: params === "all" || params === "cram",
+    cram: params === "cram",
     newToReviewRatio,
   });
 

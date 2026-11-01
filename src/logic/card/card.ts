@@ -27,6 +27,17 @@ export interface CardSkeleton {
   deck: string;
   creationDate: Date;
   customOrder?: number;
+  /** Hidden from study until switched back on. FSRS state is kept. */
+  suspended?: boolean;
+  /** Hidden from study until this time (ms epoch). */
+  buriedUntil?: number;
+  /** Overrides the deck's FSRS settings for this one card. */
+  fsrsOverride?: CardFsrsOverride;
+}
+
+export interface CardFsrsOverride {
+  desiredRetention?: number;
+  maximumInterval?: number;
 }
 
 export interface Card<T extends NoteType> extends CardSkeleton {

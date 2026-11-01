@@ -26,13 +26,16 @@ import { t } from "i18next";
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import DebugCardModal from "../DebugCardModal/DebugCardModal";
+import CardSchedulingModal from "./CardSchedulingModal";
 
 interface CardMenuProps {
   card: Card<NoteType> | undefined;
   onDelete?: Function;
+  /** Called when the card is suspended or buried, so study can move on. */
+  onHidden?: () => void;
 }
 
-function CardMenu({ card, onDelete }: CardMenuProps) {
+function CardMenu({ card, onDelete, onHidden }: CardMenuProps) {
   const navigate = useNavigate();
 
   const [developerMode] = useSetting("#developerMode");
@@ -40,11 +43,12 @@ function CardMenu({ card, onDelete }: CardMenuProps) {
   const [debugModalOpened, setDebugModalOpened] = useState<boolean>(false);
   const [statisticsModalOpened, setStatisticsModalOpened] =
     useState<boolean>(false);
+  const [schedulingOpened, setSchedulingOpened] = useState<boolean>(false);
 
   const showShortcutHints = useShowShortcutHints();
   useHotkeys([
     ["s", () => setStatisticsModalOpened(true)],
-    ["o", () => {}],
+    ["o", () => setSchedulingOpened(true)],
     ["shift+d", () => setDebugModalOpened(true)],
     ["e", () => navigate(`/notes?deck=${note?.deck}&note=${note?.id}`)],
     ["Backspace", () => setDeleteModalOpened(true)],
@@ -103,7 +107,7 @@ function CardMenu({ card, onDelete }: CardMenuProps) {
         <MenuItem
           leftSection={<IconAdjustmentsHorizontal size={16} />}
           rightSection={showShortcutHints && <Kbd>o</Kbd>}
-          disabled
+          onClick={() => setSchedulingOpened(true)}
         >
           {t("card.menu.options")}
         </MenuItem>
@@ -135,6 +139,12 @@ function CardMenu({ card, onDelete }: CardMenuProps) {
         opened={statisticsModalOpened}
         setOpened={setStatisticsModalOpened}
         card={card}
+      />
+      <CardSchedulingModal
+        opened={schedulingOpened}
+        setOpened={setSchedulingOpened}
+        card={card}
+        onHidden={onHidden}
       />
       <DebugCardModal
         opened={debugModalOpened}

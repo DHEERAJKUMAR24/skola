@@ -19,6 +19,7 @@ import DeckMenu from "./DeckMenu";
 import "./DeckView.css";
 import { useCardStateCounts } from "@/logic/card/hooks/useCardStateCounts";
 import { useCardsOf } from "@/logic/card/hooks/useCardsOf";
+import DeckExamPanel from "./DeckExamPanel";
 import DeckHeroSection from "./DeckHeroSection/DeckHeroSection";
 import SubDeckSection from "./SubDeckSection";
 
@@ -83,6 +84,7 @@ function DeckView() {
       {ready && states && (
         <div className={BASE}>
           <DeckHeroSection deck={deck} cards={cards} states={states} />
+          {deck && <DeckExamPanel deck={deck} cards={cards} />}
           <Tabs defaultValue="subdecks" variant="outline">
             <Tabs.List>
               <Tabs.Tab value="subdecks">

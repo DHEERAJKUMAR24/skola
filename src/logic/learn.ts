@@ -1,15 +1,28 @@
 import { Table } from "dexie";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Grade, RecordLog, State } from "ts-fsrs";
-import { useSchedulerFor } from "./card/CardScheduler";
+import { useCardScheduling } from "./card/CardScheduler";
 import { Card } from "./card/card";
+import { applyLeech, buryCards } from "./card/cardControls";
 import { useCardsWith } from "./card/hooks/useCardsWith";
+import { useTodayActivity } from "./card/hooks/useTodayActivity";
 import { updateCardModel } from "./card/updateCardModel";
 import { NoteType } from "./note/note";
+import {
+  addDays,
+  applyRandomOrder,
+  isLeechLapse,
+  isStudyable,
+  limitNewCards,
+  logicalDayStart,
+  siblingsToBury,
+} from "./scheduling/policy";
 import { DeckStatistics, newStatistics } from "./statistics";
 
 export type LearnOptions = {
   learnAll: boolean;
+  /** Review everything once without changing any FSRS state or review log. */
+  cram?: boolean;
   newToReviewRatio: number;
   sort?: (a: Card<NoteType>, b: Card<NoteType>) => number;
 };
@@ -52,7 +65,15 @@ export function useLearning(
     cardQuerier.dependencies
   );
 
-  const schedulerFor = useSchedulerFor();
+  const {
+    scheduleFor,
+    optionsOf,
+    limitOf,
+    reviewLimitOf,
+    newDayStartHour,
+    ready,
+  } = useCardScheduling();
+  const today = useTodayActivity(newDayStartHour);
 
   //Time critical cards are cards that are due today / should be done within this learning session (5-10 min interval). timeCriticalCards should be sorted by due date
   const [timeCriticalCards, setTimeCriticalCards] = useState<Card<NoteType>[]>(
@@ -81,8 +102,8 @@ export function useLearning(
   );
 
   useEffect(() => {
-    //Check if there are already cards provided
-    if (providedCards) {
+    //Check if there are already cards provided (and what is needed to limit new cards)
+    if (providedCards && ready && today) {
       //Check if there are no cards are in the respective lists and currentCard is not set.
       if (
         timeCriticalCards.length +
@@ -94,28 +115,49 @@ export function useLearning(
       ) {
         //If yes, sort the cards into the respective lists
         const now = new Date(Date.now());
+        // Suspended and buried cards stay out of study.
+        const studyable = providedCards.filter((c) => isStudyable(c, now));
+        const seenByDeck = new Map<string, number>();
+        const reviewedByDeck = new Map<string, number>();
+        for (const c of studyable) {
+          if (today.newSeen.has(c.id))
+            seenByDeck.set(c.deck, (seenByDeck.get(c.deck) ?? 0) + 1);
+          const n = today.reviewed.get(c.id);
+          if (n)
+            reviewedByDeck.set(c.deck, (reviewedByDeck.get(c.deck) ?? 0) + n);
+        }
+        const capped = !(options.learnAll || options.cram);
         setTimeCriticalCards(
-          providedCards.filter(
+          studyable.filter(
             (card) =>
               card.model.state === State.Learning ||
               card.model.state === State.Relearning
           )
         );
-        setNewCards(
-          providedCards
+        // Decks set to random order shuffle their new cards (the same way all day).
+        const newOnes = applyRandomOrder(
+          studyable
             .filter((card) => card.model.state === State.New)
-            .sort(options.sort)
+            .sort(options.sort),
+          (deckId) => optionsOf(deckId)?.newCardOrder === "random",
+          String(logicalDayStart(now, newDayStartHour).getTime())
         );
+        // Each deck has daily limits for new and review cards, except in study-all and cram sessions.
+        setNewCards(
+          capped ? limitNewCards(newOnes, limitOf, seenByDeck) : newOnes
+        );
+        const dueOnes = studyable
+          .filter(
+            (card) => card.model.state === State.Review && card.model.due <= now
+          )
+          .sort(options.sort);
         setToReviewCards(
-          providedCards
-            .filter(
-              (card) =>
-                card.model.state === State.Review && card.model.due <= now
-            )
-            .sort(options.sort)
+          capped
+            ? limitNewCards(dueOnes, reviewLimitOf, reviewedByDeck)
+            : dueOnes
         );
         setLearnedCards(
-          providedCards
+          studyable
             .filter(
               (card) =>
                 card.model.state === State.Review && card.model.due > now
@@ -129,6 +171,12 @@ export function useLearning(
     }
   }, [
     providedCards,
+    ready,
+    today,
+    limitOf,
+    reviewLimitOf,
+    optionsOf,
+    newDayStartHour,
     currentCard,
     timeCriticalCards,
     newCards,
@@ -192,36 +240,71 @@ export function useLearning(
   const currentCardRepeatInfo = useMemo(() => {
     if (currentCard) {
       // Cards stored by the old fsrs.js lack learning_steps.
-      return schedulerFor(currentCard.deck).repeat(
-        {
-          ...currentCard.model,
-          learning_steps: currentCard.model.learning_steps ?? 0,
-        },
-        new Date(Date.now())
-      );
+      return scheduleFor(currentCard, new Date(Date.now()));
     } else {
       return null;
     }
-  }, [currentCard, schedulerFor]);
+  }, [currentCard, scheduleFor]);
+
+  /** Leech handling and burying siblings, per the answered card's preset. */
+  const afterAnswer = useCallback(
+    async (card: Card<NoteType>, lapsesNow: number) => {
+      const rules = optionsOf(card.deck);
+      if (!rules) return;
+      if (
+        rules.leechThreshold &&
+        isLeechLapse(card.model.lapses, lapsesNow, rules.leechThreshold)
+      )
+        await applyLeech(card, rules.leechAction ?? "tag");
+
+      const siblings = siblingsToBury(card, providedCards ?? [], rules);
+      if (!siblings.length) return;
+      const ids = new Set(siblings.map((s) => s.id));
+      const tomorrow = addDays(logicalDayStart(new Date(), newDayStartHour), 1);
+      await buryCards([...ids], tomorrow.getTime());
+      const keep = (c: Card<NoteType>) => !ids.has(c.id);
+      setNewCards((l) => l.filter(keep));
+      setToReviewCards((l) => l.filter(keep));
+      setLearnedCards((l) => l.filter(keep));
+      setTimeCriticalCards((l) => l.filter(keep));
+    },
+    [optionsOf, providedCards, newDayStartHour]
+  );
 
   //Answering the current card with the given rating
   const answer = useCallback(
     (rating: Grade) => {
       if (currentCard && currentCardRepeatInfo) {
         //Don't update the card if it is already learned and not due for a review
-        if (
+        if (options.cram) {
+          // Cram never touches FSRS state; a missed card just comes around again this session.
+          if (rating === 1)
+            setTimeCriticalCards((tc) => [
+              ...tc,
+              {
+                ...currentCard,
+                model: { ...currentCard.model, due: new Date(0) },
+              },
+            ]);
+        } else if (
           !(
             currentCard.model.state === State.Review &&
             currentCard.model.due.getTime() >= Date.now()
           )
         ) {
-          updateCardModel(
+          const newModel = currentCardRepeatInfo[rating].card;
+          void updateCardModel(
             currentCard,
-            currentCardRepeatInfo[rating].card,
+            newModel,
             currentCardRepeatInfo[rating].log
-          );
+          )
+            .then(() => afterAnswer(currentCard, newModel.lapses))
+            .catch((e) => console.error("study follow-up failed", e));
         }
-        if (currentCardRepeatInfo[rating].card.scheduled_days === 0) {
+        if (
+          !options.cram &&
+          currentCardRepeatInfo[rating].card.scheduled_days === 0
+        ) {
           setTimeCriticalCards((tcCards) =>
             [
               ...tcCards,
@@ -244,7 +327,14 @@ export function useLearning(
       }
       setShowingAnswer(false);
     },
-    [currentCard, currentCardRepeatInfo, timeCriticalCards, statistics]
+    [
+      currentCard,
+      currentCardRepeatInfo,
+      timeCriticalCards,
+      statistics,
+      options.cram,
+      afterAnswer,
+    ]
   );
 
   return {

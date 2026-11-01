@@ -16,6 +16,8 @@ export interface SettingsValues {
   "#useVisualFeedback": boolean;
   "#developerMode": boolean;
   "#showShortcutHints": boolean;
+  /** Ids of the guided tours already shown. Synced, so a tour is not repeated on a new device. */
+  "#toursSeen": string[];
 
   "#colorSchemePreference": "light" | "dark" | "auto";
   "#densityPreference": "relaxed" | "compact" | "auto";

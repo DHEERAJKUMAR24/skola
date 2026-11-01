@@ -1,4 +1,5 @@
 import { Deck } from "@/logic/deck/deck";
+import { decksWithPaths } from "@/logic/deck/deckPath";
 import { Combobox } from "./ui";
 
 interface SelectDecksHeaderProps {
@@ -22,10 +23,10 @@ export default function SelectDecksHeader({
       searchable
       nothingFoundMessage="No Decks Found"
       data={(disableAll ? [] : [{ value: "", label: "All" }]).concat(
-        decks?.map((deck) => ({
+        decksWithPaths(decks ?? []).map(({ deck, path }) => ({
           value: deck.id,
-          label: deck.name,
-        })) ?? []
+          label: path,
+        }))
       )}
       value={selectedValue}
       onChange={(value) => onSelect(value)}

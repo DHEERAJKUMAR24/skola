@@ -8,7 +8,14 @@ export interface PushRow {
   deleted?: boolean;
 }
 
-const TABLES = new Set(["decks", "cards", "notes", "reviewLogs"]);
+const TABLES = new Set([
+  "decks",
+  "cards",
+  "notes",
+  "reviewLogs",
+  "settings",
+  "presets",
+]);
 export const PULL_LIMIT = 500;
 
 export function validateRows(rows: unknown): PushRow[] | null {

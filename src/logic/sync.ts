@@ -11,7 +11,17 @@ interface WireRow {
   seq?: number;
 }
 
-const TABLES = ["decks", "cards", "notes", "reviewLogs"] as const;
+const TABLES = [
+  "decks",
+  "cards",
+  "notes",
+  "reviewLogs",
+  "settings",
+  "presets",
+] as const;
+
+/** Settings are keyed by `key`; every other synced table by `id`. */
+const keyPathOf = (tbl: string) => (tbl === "settings" ? "key" : "id");
 const PUSHED_KEY = "sync.lastPushedAt";
 const SEQ_KEY = "sync.lastSeq";
 
@@ -47,7 +57,7 @@ async function collectChanges(since: number): Promise<WireRow[]> {
     for (const r of recs) {
       rows.push({
         tbl,
-        id: r.id,
+        id: r[keyPathOf(tbl)],
         data: encode(r),
         updatedAt: tbl === "reviewLogs" ? r.reviewedAt : (r.updatedAt ?? 0),
       });
@@ -82,7 +92,11 @@ async function applyRemote(rows: WireRow[]) {
       try {
         if (r.deleted) await table.delete(r.id);
         // Stored rows already carry the sender's updatedAt; keep it so edits don't bounce back.
-        else await table.put({ ...(decode(r.data) as object), id: r.id });
+        else
+          await table.put({
+            ...(decode(r.data) as object),
+            [keyPathOf(r.tbl)]: r.id,
+          });
       } catch (e) {
         // One malformed row must not block every later pull.
         console.warn(`sync: skipped ${r.tbl}/${r.id}`, e);

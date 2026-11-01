@@ -1,5 +1,6 @@
 import SelectDecksHeader from "@/components/SelectDecksHeader";
 import { TextInput } from "@/components/ui";
+import { Select } from "@/components/ui/Select";
 import { Deck } from "@/logic/deck/deck";
 import { IconSearch } from "@tabler/icons-react";
 import "./NoteExplorerControls.css";
@@ -10,6 +11,9 @@ interface NoteExplorerControlsProps {
   onDeckSelect: (deckId: string | null) => void;
   filterValue: string;
   onFilterChange: (value: string) => void;
+  tags?: { tag: string; count: number }[];
+  selectedTag: string;
+  onTagSelect: (tag: string | null) => void;
 }
 
 export function NoteExplorerControls({
@@ -18,6 +22,9 @@ export function NoteExplorerControls({
   onDeckSelect,
   filterValue,
   onFilterChange,
+  tags,
+  selectedTag,
+  onTagSelect,
 }: NoteExplorerControlsProps) {
   return (
     <div className="note-explorer-controls">
@@ -27,6 +34,21 @@ export function NoteExplorerControls({
         selectedValue={selectedDeckParam}
         onSelect={onDeckSelect}
       />
+
+      {tags && tags.length > 0 && (
+        <Select
+          label="Tag"
+          value={selectedTag}
+          options={[
+            { value: "", label: "All tags" },
+            ...tags.map((t) => ({
+              value: t.tag,
+              label: `${t.tag} (${t.count})`,
+            })),
+          ]}
+          onChange={(v) => onTagSelect(v || null)}
+        />
+      )}
 
       <TextInput
         leftSection={<IconSearch size={16} />}

@@ -2,14 +2,15 @@ import { ColorIdentifier } from "@/lib/ColorIdentifier";
 import { v4 as uuidv4 } from "uuid";
 import { db } from "../db";
 import { Deck } from "./deck";
-import { type DeckFsrsOptions, FSRS_DEFAULTS } from "./fsrsOptions";
+import type { DeckOptions } from "./deck";
+import { FSRS_DEFAULTS } from "./fsrsOptions";
 
 export async function newDeck(
   name: string,
   superDeck?: Deck,
   description?: string,
   color?: ColorIdentifier,
-  fsrs: DeckFsrsOptions = FSRS_DEFAULTS
+  fsrs: Partial<DeckOptions> = FSRS_DEFAULTS
 ): Promise<string> {
   const uuid = uuidv4();
 

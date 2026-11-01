@@ -2,6 +2,7 @@ import "fake-indexeddb/auto";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { NotSignedIn } from "./auth";
 import { db } from "./db";
+import { PRESET_DEFAULTS } from "./deck/presets";
 import { syncOnce } from "./sync";
 
 const signIn = (expiresAt = Date.now() + 3600_000) =>
@@ -182,4 +183,50 @@ it("keeps the cursor when another device wrote in between", async () => {
   await db.cards.add({ id: "echo2", deck: "d" } as never);
   await syncOnce("http://x", false, false);
   expect(localStorage.getItem("sync.lastSeq")).toBe("4"); // 9 - 2 !== 4: foreign rows still to pull
+});
+
+it("syncs settings keyed by key, and presets keyed by id", async () => {
+  await db.settings.put({ key: "#newDayStartHour", value: 6 });
+  await db.presets.put({
+    id: "p1",
+    name: "Exam prep",
+    ...PRESET_DEFAULTS,
+    desiredRetention: 0.95,
+  });
+
+  const sent: { tbl: string; id: string }[] = [];
+  vi.stubGlobal("fetch", async (url: string, init?: { body?: string }) => {
+    if (url.includes("/push")) {
+      sent.push(...JSON.parse(init?.body as string).rows);
+      return Response.json({ seq: 1 });
+    }
+    return Response.json({
+      rows: [
+        {
+          tbl: "settings",
+          id: "#densityPreference",
+          updatedAt: 9_000_000_000_000,
+          seq: 5,
+          data: {
+            key: "#densityPreference",
+            value: "compact",
+            updatedAt: 9_000_000_000_000,
+          },
+        },
+      ],
+      seq: 5,
+      more: false,
+    });
+  });
+  await syncOnce("http://x");
+
+  expect(
+    sent.find((r) => r.tbl === "settings" && r.id === "#newDayStartHour")
+  ).toBeTruthy();
+  expect(sent.find((r) => r.tbl === "presets" && r.id === "p1")).toBeTruthy();
+  // a setting pulled from another device lands under its key
+  expect(await db.settings.get("#densityPreference")).toMatchObject({
+    key: "#densityPreference",
+    value: "compact",
+  });
 });

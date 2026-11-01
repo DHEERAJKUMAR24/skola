@@ -7,6 +7,7 @@ import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import "./EditNoteView.css";
 import NoteMenu from "./NoteMenu";
+import NoteTagsEditor from "./NoteTagsEditor";
 
 const BASE = "edit-note";
 
@@ -70,6 +71,7 @@ function NoteView({
         <NoteMenu note={note} withEdit={false} />
       </div>
       <div className={`${BASE}__content`}>{NoteEditor}</div>
+      <NoteTagsEditor noteId={note.id} />
       {/*<LinkedNotesSection
         linkedNotes={note.linkedNotes}
         onSelectNote={

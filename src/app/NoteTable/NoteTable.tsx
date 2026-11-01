@@ -80,6 +80,12 @@ function NoteTable({
       sortFunction: NoteSorts.byDeckName,
       visible: true,
     },
+    {
+      key: "tags",
+      name: "Tags",
+      sortFunction: NoteSorts.bySortField,
+      visible: true,
+    },
   ]);
 
   useEffect(() => {

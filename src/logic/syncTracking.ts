@@ -16,8 +16,14 @@ export interface Tombstone {
   updatedAt: number;
 }
 
-// shortcut: decks/cards/notes only; settings and statistics have other keys, add with the Worker.
-const SYNCED_TABLES = ["decks", "cards", "notes"] as const;
+// statistics has a composite key and is derived data, so it stays local.
+const SYNCED_TABLES = [
+  "decks",
+  "cards",
+  "notes",
+  "settings",
+  "presets",
+] as const;
 
 /** Stamps updatedAt on every local write and records deletions as tombstones. */
 export function installSyncTracking(db: Database) {

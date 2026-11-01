@@ -14,6 +14,7 @@ import {
   NotificationProvider,
   useNotificationSetup,
 } from "./components/Notification";
+import TourHost from "./components/Tour/TourHost";
 import { useDensity } from "./hooks/useDensity";
 import { useTheme } from "./hooks/useTheme";
 import i18n from "./i18n";
@@ -102,6 +103,7 @@ function AppContent() {
               <div className={`${BASE}__main-content`}>
                 <div className={`${BASE}__main-center`}>
                   <Outlet />
+                  <TourHost />
                 </div>
               </div>
             </main>

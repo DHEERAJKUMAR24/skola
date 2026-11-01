@@ -2,22 +2,24 @@ import type ModalProps from "@/components/ModalProps";
 import { Button, Modal, TextInput } from "@/components/ui";
 import { ColorIdentifier } from "@/lib/ColorIdentifier";
 import { useHotkeys } from "@/lib/hooks/useHotkeys";
+import { db } from "@/logic/db";
 import type { Deck } from "@/logic/deck/deck";
-import {
-  FSRS_DEFAULTS,
-  type FsrsFormState,
-  fromFormState,
-  toFormState,
-} from "@/logic/deck/fsrsOptions";
+import { type ExamForm, fromExamForm, toExamForm } from "@/logic/deck/examForm";
 import { newDeck } from "@/logic/deck/newDeck";
+import {
+  DEFAULT_PRESET_ID,
+  ensureDefaultPreset,
+  usePresets,
+} from "@/logic/deck/presets";
 import { updateDeck } from "@/logic/deck/updateDeck";
-import { useSetting } from "@/logic/settings/hooks/useSetting";
+import { resolveExam } from "@/logic/scheduling/policy";
+import { useLiveQuery } from "dexie-react-hooks";
 import { t } from "i18next";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import DeckColorChooser from "./DeckColorChooser";
 import "./DeckModal.css";
-import DeckFsrsFields from "./DeckFsrsFields";
+import DeckStudyFields from "./DeckStudyFields";
 
 const BASE = "deck-modal";
 const NAME_MAX = 60;
@@ -36,16 +38,20 @@ function DeckModal({
   superDeck,
 }: DeckModalProps) {
   const navigate = useNavigate();
-  const [globalRetention] = useSetting("#globalScheduler_requestRetention");
-  const [globalMaxInterval] = useSetting("#globalScheduler_maximumInterval");
+  const presets = usePresets();
 
   const [nameValue, setNameValue] = useState<string>("");
   const [nameTouched, setNameTouched] = useState(false);
   const [descriptionValue, setDescriptionValue] = useState<string>("");
   const [deckColor, setDeckColor] = useState<ColorIdentifier>("sky");
-  const [fsrs, setFsrs] = useState<FsrsFormState>(toFormState());
+  const [presetId, setPresetId] = useState<string>(DEFAULT_PRESET_ID);
+  const [exam, setExam] = useState<ExamForm>(toExamForm());
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [status, setStatus] = useState<string | null>(null);
+
+  useEffect(() => {
+    void ensureDefaultPreset();
+  }, []);
 
   useEffect(() => {
     setNameTouched(false);
@@ -53,28 +59,43 @@ function DeckModal({
       setNameValue(deck.name);
       setDescriptionValue(deck.description || "");
       setDeckColor(deck.color || "sky");
-      // Decks made before per-deck FSRS ran on the global settings, so show those, not new-deck defaults.
-      const o = deck.options;
-      setFsrs(
-        toFormState({
-          desiredRetention: o?.desiredRetention ?? globalRetention,
-          maximumInterval: o?.maximumInterval ?? globalMaxInterval,
-          learningSteps: o?.learningSteps ?? FSRS_DEFAULTS.learningSteps,
-          relearningSteps: o?.relearningSteps ?? FSRS_DEFAULTS.relearningSteps,
-          enableFuzz: o?.enableFuzz ?? false,
-        })
-      );
+      // "" = an older deck that has its own settings and no preset yet.
+      setPresetId(deck.options?.presetId ?? "");
+      setExam(toExamForm(deck.options));
     } else {
       setNameValue("");
       setDescriptionValue("");
       setDeckColor("sky");
-      // A sub-deck starts from its parent's memory settings.
-      setFsrs(toFormState(superDeck?.options));
+      // A sub-deck starts with its parent's preset. The exam date is inherited, not copied.
+      setPresetId(superDeck?.options?.presetId ?? DEFAULT_PRESET_ID);
+      setExam(toExamForm());
     }
-  }, [mode, deck, superDeck, opened, globalRetention, globalMaxInterval]);
+  }, [mode, deck, superDeck, opened]);
 
-  const parsed = useMemo(() => fromFormState(fsrs), [fsrs]);
-  const fsrsErrors = "errors" in parsed ? parsed.errors : {};
+  const decksById = useLiveQuery(
+    async () => new Map((await db.decks.toArray()).map((d) => [d.id, d])),
+    []
+  );
+  // The exam a deck would use if it had no date of its own: its nearest ancestor's.
+  const inherited = useMemo(() => {
+    if (!decksById) return undefined;
+    const base = mode === "edit" ? deck : superDeck;
+    if (!base) return undefined;
+    const probe =
+      mode === "edit"
+        ? { ...base, options: { ...base.options, examDate: undefined } }
+        : base;
+    const info = resolveExam(probe, decksById);
+    return info
+      ? {
+          date: info.date,
+          deckName: decksById.get(info.sourceDeckId)?.name ?? "a parent deck",
+        }
+      : undefined;
+  }, [decksById, mode, deck, superDeck]);
+
+  const parsed = useMemo(() => fromExamForm(exam), [exam]);
+  const examErrors = "errors" in parsed ? parsed.errors : {};
   const nameError =
     nameTouched && nameValue.trim() === "" ? "Give the deck a name" : undefined;
 
@@ -100,7 +121,7 @@ function DeckModal({
           superDeck,
           descriptionValue,
           deckColor,
-          parsed.options
+          { presetId: presetId || DEFAULT_PRESET_ID, ...parsed.options }
         );
         setOpened(false);
         navigate("/deck/" + id);
@@ -110,7 +131,8 @@ function DeckModal({
           nameValue.trim(),
           descriptionValue,
           deckColor,
-          parsed.options
+          // An older deck left on its own settings keeps them (no preset is written).
+          { ...(presetId ? { presetId } : {}), ...parsed.options }
         );
         setOpened(false);
       }
@@ -164,7 +186,20 @@ function DeckModal({
           onKeyDown={handleKeyDown}
         />
         <DeckColorChooser deckColor={deckColor} setDeckColor={setDeckColor} />
-        <DeckFsrsFields state={fsrs} errors={fsrsErrors} onChange={setFsrs} />
+        <DeckStudyFields
+          presets={presets ?? []}
+          presetId={presetId}
+          onPresetChange={setPresetId}
+          showLegacy={mode === "edit" && !deck?.options?.presetId}
+          exam={exam}
+          examErrors={examErrors}
+          onExamChange={setExam}
+          inheritedExam={inherited}
+          onManagePresets={() => {
+            setOpened(false);
+            navigate("/settings/presets");
+          }}
+        />
         {status && <p className={`${BASE}__status`}>{status}</p>}
         <div className={`${BASE}__actions`}>
           <Button variant="default" onClick={handleClose}>

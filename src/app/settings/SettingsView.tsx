@@ -10,6 +10,7 @@ import {
   IconPalette,
   IconPencil,
   IconSettings,
+  IconStack2,
 } from "@tabler/icons-react";
 import { t } from "i18next";
 import { useEffect, useState } from "react";
@@ -22,6 +23,7 @@ import EditingSettingsView from "./EditingSettingsView/EditingSettingsView";
 import GeneralSettingsView from "./GeneralSettingsView";
 import LearnSettingsView from "./LearnSettingsView";
 import SyncSettingsView from "./SyncSettingsView";
+import StudyPresetsView from "./presets/StudyPresetsView";
 import "./SettingsView.css";
 
 const BASE = "settings-view";
@@ -72,6 +74,10 @@ export default function SettingsView() {
             <IconBolt size={18} />
             {t("settings.learn.title")}
           </Tabs.Tab>
+          <Tabs.Tab value="presets">
+            <IconStack2 size={18} />
+            {t("settings.presets.title", "Study presets")}
+          </Tabs.Tab>
           <Tabs.Tab value="database">
             <IconDatabase size={18} />
             {t("settings.database.title")}
@@ -102,6 +108,9 @@ export default function SettingsView() {
         </Tabs.Panel>
         <Tabs.Panel value="learn">
           <LearnSettingsView />
+        </Tabs.Panel>
+        <Tabs.Panel value="presets">
+          <StudyPresetsView />
         </Tabs.Panel>
         <Tabs.Panel value="database">
           <DatabaseSettingsView />
