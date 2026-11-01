@@ -1,6 +1,6 @@
 import { NotSignedIn, authFetch, getAccessTokenSync, isSignedIn, syncUrl } from "./auth";
 import { db } from "./db";
-import { syncFlags } from "./syncTracking";
+import { LOCAL_CHANGE_EVENT, syncFlags } from "./syncTracking";
 
 interface WireRow {
   tbl: string;
@@ -88,7 +88,8 @@ function pushOnHide(url: string, init: RequestInit) {
     : null;
 }
 
-export async function syncOnce(baseUrl: string, keepalive = false) {
+/** Pushes local changes; also pulls unless `pull` is false (push-only saves a request). */
+export async function syncOnce(baseUrl: string, keepalive = false, pull = true) {
   if (!isSignedIn()) return;
   const since = getNum(PUSHED_KEY);
   const rows = await collectChanges(since);
@@ -102,7 +103,7 @@ export async function syncOnce(baseUrl: string, keepalive = false) {
     check(res, "push");
     localStorage.setItem(PUSHED_KEY, String(Math.max(since, ...rows.map((r) => r.updatedAt))));
   }
-  if (keepalive) return;
+  if (keepalive || !pull) return;
   let more = true;
   while (more) {
     const res = await authFetch(`${baseUrl}/sync/pull?since=${getNum(SEQ_KEY)}`);
@@ -120,14 +121,24 @@ export function syncNow() {
   return syncOnce(syncUrl);
 }
 
-/** Sync on start, focus, reconnect and a 30 s timer; flush pending pushes when the page hides. */
+const PUSH_DEBOUNCE_MS = 5_000;
+const MIN_PULL_GAP_MS = 60_000;
+const POLL_MS = 10 * 60_000;
+
+/**
+ * Sync on start, sign-in and reconnect; push a few seconds after local edits; pull on focus
+ * (at most once a minute) and every 10 minutes while visible. Idle or hidden tabs make no calls.
+ */
 export function startSync(baseUrl: string) {
   let running = false;
-  const run = async (keepalive = false) => {
+  let lastPull = 0;
+  const run = async (opts: { keepalive?: boolean; pull?: boolean } = {}) => {
+    const { keepalive = false, pull = true } = opts;
     if (running && !keepalive) return;
     running = true;
     try {
-      await syncOnce(baseUrl, keepalive);
+      await syncOnce(baseUrl, keepalive, pull);
+      if (pull && !keepalive) lastPull = Date.now();
     } catch (e) {
       // Signed out mid-sync is expected, not an error worth logging.
       if (!(e instanceof NotSignedIn)) console.warn("sync failed", e);
@@ -135,12 +146,23 @@ export function startSync(baseUrl: string) {
       running = false;
     }
   };
+  const pullIfStale = () => {
+    if (document.visibilityState === "visible" && Date.now() - lastPull > MIN_PULL_GAP_MS) run();
+  };
+
+  let pushTimer: ReturnType<typeof setTimeout> | undefined;
+  window.addEventListener(LOCAL_CHANGE_EVENT, () => {
+    clearTimeout(pushTimer);
+    pushTimer = setTimeout(() => run({ pull: false }), PUSH_DEBOUNCE_MS);
+  });
+
   run();
-  window.addEventListener("focus", () => run());
   window.addEventListener("online", () => run());
   window.addEventListener("auth-changed", () => run());
+  window.addEventListener("focus", pullIfStale);
   document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "hidden") run(true);
+    if (document.visibilityState === "hidden") run({ keepalive: true });
+    else pullIfStale();
   });
-  setInterval(() => run(), 30_000);
+  setInterval(pullIfStale, POLL_MS);
 }
