@@ -16,13 +16,14 @@ export interface Tombstone {
   updatedAt: number;
 }
 
-// statistics has a composite key and is derived data, so it stays local.
+// The old `statistics` table has a composite key and is read-only legacy data, so it stays local.
 const SYNCED_TABLES = [
   "decks",
   "cards",
   "notes",
   "settings",
   "presets",
+  "studySessions",
 ] as const;
 
 /** Stamps updatedAt on every local write and records deletions as tombstones. */

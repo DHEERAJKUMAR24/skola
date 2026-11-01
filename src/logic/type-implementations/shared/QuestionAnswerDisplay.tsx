@@ -1,7 +1,9 @@
 import { Divider } from "@/components/ui";
+import { useMediaHtml } from "@/logic/media/useMedia";
 import { ReactNode } from "react";
 
 export function QuestionContent({ html }: { html: string }) {
+  const shown = useMediaHtml(html);
   return (
     <h3
       style={{
@@ -11,19 +13,20 @@ export function QuestionContent({ html }: { html: string }) {
         margin: 0,
         padding: "var(--spacing-md)",
       }}
-      dangerouslySetInnerHTML={{ __html: html }}
+      dangerouslySetInnerHTML={{ __html: shown }}
     />
   );
 }
 
 export function AnswerContent({ html }: { html: string }) {
+  const shown = useMediaHtml(html);
   return (
     <div
       style={{
         fontSize: "var(--font-size-md)",
         padding: "var(--spacing-md)",
       }}
-      dangerouslySetInnerHTML={{ __html: html }}
+      dangerouslySetInnerHTML={{ __html: shown }}
     />
   );
 }

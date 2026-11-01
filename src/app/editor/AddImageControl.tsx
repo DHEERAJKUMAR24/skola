@@ -1,4 +1,6 @@
+import { genericFail } from "@/components/Notification/Notification";
 import { RichTextEditorControl } from "@/components/ui/RichTextEditor";
+import { prepareImage } from "@/logic/media/shrink";
 import { IconPhoto } from "@tabler/icons-react";
 import { Editor } from "@tiptap/react";
 import { memo, useCallback, useRef } from "react";
@@ -17,15 +19,13 @@ const AddImageControl = memo(function AddImageControl({
       const file = event.target.files?.[0];
       if (!file) return;
 
-      const fileReader = new FileReader();
-      fileReader.readAsDataURL(file);
-      fileReader.onloadend = () => {
-        const data = fileReader.result;
+      void prepareImage(file).then((prepared) => {
+        if (!prepared.ok) return genericFail();
         editor?.commands.insertContent(
-          `<img src="${data}" alt="Image inserted by user"/>`
+          `<img src="${prepared.ref}" alt="Image inserted by user"/>`
         );
         editor?.commands.focus();
-      };
+      });
 
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
@@ -39,7 +39,7 @@ const AddImageControl = memo(function AddImageControl({
       <input
         ref={fileInputRef}
         type="file"
-        accept="image/jpeg, image/jpg, image/png, image/heic"
+        accept="image/*"
         onChange={handleFileChange}
         style={{ display: "none" }}
       />

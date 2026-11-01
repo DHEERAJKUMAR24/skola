@@ -1,0 +1,52 @@
+.create-fab {
+  position: fixed;
+  right: calc(var(--spacing-lg) + var(--safe-area-right));
+  bottom: calc(var(--spacing-lg) + var(--safe-area-bottom));
+  /* Above page content, below the sidebar overlay (55) and navbar (60). */
+  z-index: 50;
+}
+
+/* The new-card page has its Add Card button in a footer at the same corner; sit above it. */
+.create-fab--above-footer {
+  bottom: calc(var(--spacing-lg) + var(--safe-area-bottom) + 4.5rem);
+}
+
+.create-fab__button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 3.5rem;
+  height: 3.5rem;
+  border: none;
+  border-radius: 50%;
+  background-color: var(--color-primary-500);
+  color: #fff;
+  cursor: pointer;
+  box-shadow: var(--shadow-lg);
+  transition: background-color var(--transition-duration-fast)
+    var(--transition-timing-ease), transform var(--transition-duration-fast)
+    var(--transition-timing-ease);
+}
+
+.create-fab__button:hover {
+  background-color: var(--color-primary-600);
+}
+
+.create-fab__button:active {
+  transform: scale(0.94);
+}
+
+.create-fab__button:focus-visible {
+  outline: var(--ring-outline);
+  box-shadow: var(--ring-shadow);
+}
+
+/* The menu opens upward and to the left of the button, since the button sits in the corner. */
+.create-fab .menu__popover {
+  margin-top: 0;
+  margin-bottom: var(--spacing-sm);
+  /* biome-ignore lint/correctness/noUnknownProperty: anchor positioning, same as .menu__popover */
+  position-area: top span-left;
+  position-try: flip-block;
+  transform-origin: bottom;
+}

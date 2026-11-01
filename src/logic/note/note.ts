@@ -22,6 +22,8 @@ export enum NoteType {
   Basic = "normal",
   Cloze = "cloze",
   ImageOcclusion = "imageOcclusion",
+  MultipleChoice = "multipleChoice",
+  List = "list",
   DoubleSided = "doubleSided",
   Undefined = "undefined",
 }

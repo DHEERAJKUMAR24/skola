@@ -2,6 +2,7 @@ import ImportModal from "@/app/settings/importexport/ImportModal";
 import DangerousConfirmModal from "@/components/DangerousConfirmModal";
 import { IconButton, Kbd, Menu, MenuItem } from "@/components/ui";
 import { useHotkeys } from "@/lib/hooks/useHotkeys";
+import { db } from "@/logic/db";
 import { Deck } from "@/logic/deck/deck";
 import { deleteDeck } from "@/logic/deck/deleteDeck";
 import { useSetting } from "@/logic/settings/hooks/useSetting";
@@ -13,6 +14,9 @@ import {
   IconCursorText,
   IconDots,
   IconFileImport,
+  IconPlayerPause,
+  IconPlayerPlay,
+  IconRepeat,
   IconTrash,
 } from "@tabler/icons-react";
 import { useCallback, useState } from "react";
@@ -129,6 +133,37 @@ function DeckMenu({
           </IconButton>
         )}
       >
+        <MenuItem
+          leftSection={<IconPlayerPlay />}
+          onClick={() => deck && navigate(`/learn/${deck.id}`)}
+        >
+          {t("deck.menu.study")}
+        </MenuItem>
+        <MenuItem
+          leftSection={<IconRepeat />}
+          onClick={() => deck && navigate(`/learn/${deck.id}/cram`)}
+        >
+          {t("deck.menu.practice-all")}
+        </MenuItem>
+        <MenuItem
+          leftSection={
+            deck?.priority === "paused" ? (
+              <IconPlayerPause />
+            ) : (
+              <IconPlayerPlay />
+            )
+          }
+          onClick={() =>
+            deck &&
+            db.decks.update(deck.id, {
+              priority: deck.priority === "paused" ? "studying" : "paused",
+            })
+          }
+        >
+          {deck?.priority === "paused"
+            ? t("deck.menu.priority-paused")
+            : t("deck.menu.priority-studying")}
+        </MenuItem>
         <MenuItem
           leftSection={<IconCursorText />}
           rightSection={withShortcuts && showShortcutHints && <Kbd>r</Kbd>}

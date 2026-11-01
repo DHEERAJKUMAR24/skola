@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { AppBreadcrumbs } from "@/components/AppBreadcrumbs";
@@ -14,6 +14,7 @@ import { useDeckFromUrl } from "@/logic/deck/hooks/useDeckFromUrl";
 import { useDecks } from "@/logic/deck/hooks/useDecks";
 import { NoteType } from "@/logic/note/note";
 import { t } from "i18next";
+import { LAST_DECK_KEY } from "../shell/CreateFab";
 import { AppHeaderContent } from "../shell/Header/Header";
 import NewNotesFooter from "./NewNotesFooter";
 import "./NewNotesView.css";
@@ -30,6 +31,15 @@ function NewNotesView() {
   const [requestedFinish, setRequestedFinish] = useState(false);
 
   const noteTypeSelectRef = useRef<SelectRef>(null);
+
+  // The floating create button offers this deck next time no deck is open.
+  useEffect(() => {
+    if (deck) {
+      try {
+        localStorage.setItem(LAST_DECK_KEY, deck.id);
+      } catch {}
+    }
+  }, [deck]);
 
   useHotkeys([
     [
@@ -61,7 +71,9 @@ function NewNotesView() {
           focusSelectNoteType,
         })
       : null;
-  }, [deck, noteType, setNoteType, focusSelectNoteType]);
+    // requestedFinish is a dependency on purpose: the editor only sees the Add Card button's
+    // request when it is rebuilt with the new value.
+  }, [deck, noteType, setNoteType, focusSelectNoteType, requestedFinish]);
 
   if (isReady && !deck) {
     return <NotFound />;
@@ -116,15 +128,19 @@ function NewNotesView() {
                       value: NoteType.DoubleSided,
                     },
                     {
-                      label:
-                        NoteTypeLabels[NoteType.Cloze] +
-                        t("global.feature-status.in-development"),
+                      label: NoteTypeLabels[NoteType.Cloze],
                       value: NoteType.Cloze,
                     },
                     {
-                      label:
-                        NoteTypeLabels[NoteType.ImageOcclusion] +
-                        t("global.feature-status.planned"),
+                      label: NoteTypeLabels[NoteType.MultipleChoice],
+                      value: NoteType.MultipleChoice,
+                    },
+                    {
+                      label: NoteTypeLabels[NoteType.List],
+                      value: NoteType.List,
+                    },
+                    {
+                      label: NoteTypeLabels[NoteType.ImageOcclusion],
                       value: NoteType.ImageOcclusion,
                     },
                   ]}

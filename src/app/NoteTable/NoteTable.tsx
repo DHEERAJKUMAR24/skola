@@ -100,6 +100,8 @@ function NoteTable({
     [NoteType.Cloze]: t("note.type.cloze"),
     [NoteType.ImageOcclusion]: t("note.type.image-occlusion"),
     [NoteType.DoubleSided]: t("note.type-double-sided"),
+    [NoteType.MultipleChoice]: t("note.type.multiple-choice"),
+    [NoteType.List]: t("note.type.list"),
     [NoteType.Undefined]: t("note.type.undefined"),
   };
 

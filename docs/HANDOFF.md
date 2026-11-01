@@ -22,7 +22,23 @@ FSRS-6 with policy overlay; presets with easy days, leech, sibling burying, dail
 2. Verify the optimizer (item 1 above).
 3. Add tooltips to deck page buttons, notes bulk bar, sidebar, study buttons.
 4. Deploy: create Vercel project (root `app`, branch `next-migration`), env vars `DATABASE_URL`, `AUTH_SECRET` (new value), `APP_URL`, optional `ALLOW_SIGNUP`, `RESEND_API_KEY`, `EMAIL_FROM`; run `pnpm db:push`; smoke test sign-up, sync, reset email.
-5. Phase 3 hardening (sync indicator states, tombstone gap, per-field merge), then Phase 5 MCP, then Phase 4 media on R2.
+5. Phase 3 hardening (sync indicator states, tombstone gap, per-field merge), then Phase 4 media on R2.
+
+6. MCP follow-ups: try `npx mcp-remote <APP_URL>/mcp` from Claude Desktop and `claude mcp add --transport http skola <APP_URL>/mcp` from Claude Code once deployed; consider a read-only scope and cloze support.
+
+7. Skills: run `pnpm db:push` to apply `20261102000000_skills.sql`, set `SKILL_ADMINS` in Vercel, and improve the default skill text live at `/skills/edit` (the seed in `src/server/skillSeed.ts` only fills an empty table). Not yet done: the skill-creator eval loop (test prompts with and without the skill) and checking each assistant's install steps on the /skills page against its docs.
+
+8. Offline: verified the production shell opens with the server stopped and that server pages show `/offline`. Not tried: creating and studying cards offline then syncing after reconnect on two devices; installing the PWA on a phone.
+
+10. Study statistics now sync as `studySessions` (Dexie v27, server whitelist). The Statistics page is still the "temporarily removed" placeholder, so nothing displays them yet; `getStatistics` is ready for it. Not tried: two real devices.
+
+11. Card types: cloze, multiple choice, list recall and image occlusion are built and were used end to end in the browser (create, study, edit). Not covered by tests: picture shrinking (`shrinkImage` needs a real browser; tried with one PNG), phone touch drawing of areas, and syncing a note with a picture between two devices. Fixed on the way: the Add Card button did nothing because `requestedFinish` was missing from a `useMemo` dependency list in `NewNotesView.tsx`; cloze edits now add cards for new deletions. The default skill row in a live database does not update itself: copy the new card-type text from `src/server/skillSeed.ts` into it at `/skills/edit`.
+
+12. MCP now covers every card type: `add_cards` (image occlusion from `image_url` or base64; `image_url` is fetched only from public https hosts, no redirects, 400 KB cap, see `src/server/mcpImage.ts`), `edit_card` for all types, `get_card_image`. Verified by tests and one real download; not tried from Claude or ChatGPT. The live default skill needs the new text from `src/server/skillSeed.ts` pasted in at `/skills/edit`. The image fetch checks the address then fetches by name, so a hostile DNS server could in theory swap the answer (noted as a `shortcut:`).
+
+13. (R2 bucket `skola-media` and its localhost CORS rule were created with wrangler on the owner's Cloudflare account; still to do: create the access key in the dashboard, fill the two key lines in `.env.local`, run `pnpm r2:check`, then set the four `R2_*` variables in Vercel and add the real origin to `scripts/r2-cors.json`.) Pictures now use R2 (see ADR 0007 and the dev guide). To switch it on you must create the bucket and token, set the four `R2_*` variables, add the CORS rule and run `pnpm db:push` (migration 20261103). Tested with a fake R2 that verifies signatures, including a second-device download; never run against real Cloudflare. Not done: deleting unused pictures, phone touch drawing of occlusion areas, Safari (WebP encoding may fall back to PNG).
+
+14. Connect and install instructions are one guide (`src/server/connectGuide.ts`) rendered at `/skills` for people and at `/llms.txt` for agents. The Windows and macOS/Linux skill install commands were run for real against a local server. The per-assistant menu names (Claude, ChatGPT) come from their docs as I know them and change often: check them once against the real apps.
 
 ## Open questions for the owner
 - Verified sending domain for Resend (needed for production reset emails).
@@ -35,4 +51,6 @@ FSRS-6 with policy overlay; presets with easy days, leech, sibling burying, dail
 - Tokens are in `localStorage`; no per-IP rate limit; no email verification at sign-up (see SPEC section 6.2).
 
 ## Session log
+- 2026-11-01 (skills): agent skills in Postgres with default + per-user skills, full CRUD over MCP, llms.txt, /skills pages, live editor; verified with a real OAuth login.
+- 2026-11-01 (later): deck menu study/practice items, deck priority (paused decks skipped in study), MCP server with 10 tools, verified with a real OAuth flow. Pure helpers `deck/effectiveOptions.ts` and `note/tagNormalize.ts` split out so the server can import them without Dexie.
 - 2026-11-01: presets, FSRS options, optimizer, simulator, tours, tooltips, color picker, popover tooltip fix, preset sort fix, docs restructure (AGENTS.md, ADRs, HANDOFF).

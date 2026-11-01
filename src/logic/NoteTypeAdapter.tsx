@@ -7,6 +7,8 @@ import { Note } from "./note/note";
 import { ClozeNoteTypeAdapter } from "./type-implementations/cloze/ClozeNote";
 import { DoubleSidedNoteTypeAdapter } from "./type-implementations/double-sided/DoubleSidedNote";
 import { ImageOcclusionTypeAdapter } from "./type-implementations/image-occlusion/ImageOcclusionNote";
+import { ListTypeAdapter } from "./type-implementations/list/ListNote";
+import { MultipleChoiceTypeAdapter } from "./type-implementations/multiple-choice/MultipleChoiceNote";
 import { BasicNoteTypeAdapter } from "./type-implementations/normal/BasicNote";
 import { UndefinedNoteTypeAdapter } from "./type-implementations/undefined/UndefinedNote";
 
@@ -77,6 +79,8 @@ export function getAdapterOfType<T extends NoteType>(
     [NoteType.Basic]: BasicNoteTypeAdapter,
     [NoteType.Cloze]: ClozeNoteTypeAdapter,
     [NoteType.ImageOcclusion]: ImageOcclusionTypeAdapter,
+    [NoteType.MultipleChoice]: MultipleChoiceTypeAdapter,
+    [NoteType.List]: ListTypeAdapter,
     [NoteType.Undefined]: UndefinedNoteTypeAdapter,
   };
   return adapters[type] as NoteTypeAdapter<T>;

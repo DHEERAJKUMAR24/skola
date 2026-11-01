@@ -7,6 +7,7 @@ import { applyLeech, buryCards } from "./card/cardControls";
 import { useCardsWith } from "./card/hooks/useCardsWith";
 import { useTodayActivity } from "./card/hooks/useTodayActivity";
 import { updateCardModel } from "./card/updateCardModel";
+import { withoutPaused } from "./deck/priority";
 import { NoteType } from "./note/note";
 import {
   addDays,
@@ -71,6 +72,7 @@ export function useLearning(
     limitOf,
     reviewLimitOf,
     newDayStartHour,
+    isPaused,
     ready,
   } = useCardScheduling();
   const today = useTodayActivity(newDayStartHour);
@@ -117,9 +119,14 @@ export function useLearning(
         const now = new Date(Date.now());
         // Suspended and buried cards stay out of study.
         const studyable = providedCards.filter((c) => isStudyable(c, now));
+        // Paused decks sit out of normal study; "study all" and cram still include them.
+        const inScope =
+          options.learnAll || options.cram
+            ? studyable
+            : withoutPaused(studyable, isPaused);
         const seenByDeck = new Map<string, number>();
         const reviewedByDeck = new Map<string, number>();
-        for (const c of studyable) {
+        for (const c of inScope) {
           if (today.newSeen.has(c.id))
             seenByDeck.set(c.deck, (seenByDeck.get(c.deck) ?? 0) + 1);
           const n = today.reviewed.get(c.id);
@@ -127,43 +134,53 @@ export function useLearning(
             reviewedByDeck.set(c.deck, (reviewedByDeck.get(c.deck) ?? 0) + n);
         }
         const capped = !(options.learnAll || options.cram);
-        setTimeCriticalCards(
-          studyable.filter(
-            (card) =>
-              card.model.state === State.Learning ||
-              card.model.state === State.Relearning
-          )
+        const timeCritical = inScope.filter(
+          (card) =>
+            card.model.state === State.Learning ||
+            card.model.state === State.Relearning
         );
         // Decks set to random order shuffle their new cards (the same way all day).
         const newOnes = applyRandomOrder(
-          studyable
+          inScope
             .filter((card) => card.model.state === State.New)
             .sort(options.sort),
           (deckId) => optionsOf(deckId)?.newCardOrder === "random",
           String(logicalDayStart(now, newDayStartHour).getTime())
         );
         // Each deck has daily limits for new and review cards, except in study-all and cram sessions.
-        setNewCards(
-          capped ? limitNewCards(newOnes, limitOf, seenByDeck) : newOnes
-        );
-        const dueOnes = studyable
+        const newLimited = capped
+          ? limitNewCards(newOnes, limitOf, seenByDeck)
+          : newOnes;
+        const dueOnes = inScope
           .filter(
             (card) => card.model.state === State.Review && card.model.due <= now
           )
           .sort(options.sort);
-        setToReviewCards(
-          capped
-            ? limitNewCards(dueOnes, reviewLimitOf, reviewedByDeck)
-            : dueOnes
-        );
-        setLearnedCards(
-          studyable
-            .filter(
-              (card) =>
-                card.model.state === State.Review && card.model.due > now
-            )
-            .sort(options.sort)
-        );
+        const dueLimited = capped
+          ? limitNewCards(dueOnes, reviewLimitOf, reviewedByDeck)
+          : dueOnes;
+        const learned = inScope
+          .filter(
+            (card) => card.model.state === State.Review && card.model.due > now
+          )
+          .sort(options.sort);
+
+        // Nothing to study (empty deck, everything suspended, daily limits used up). Setting four
+        // new empty lists here would re-run this effect forever, so finish the session instead.
+        if (
+          timeCritical.length +
+            newLimited.length +
+            dueLimited.length +
+            learned.length ===
+          0
+        ) {
+          setIsFinished(true);
+          return;
+        }
+        setTimeCriticalCards(timeCritical);
+        setNewCards(newLimited);
+        setToReviewCards(dueLimited);
+        setLearnedCards(learned);
       } else if (currentCard === null) {
         //If currentCard is not set (and there are cards in the lists), set it
         nextCard();
@@ -176,6 +193,7 @@ export function useLearning(
     limitOf,
     reviewLimitOf,
     optionsOf,
+    isPaused,
     newDayStartHour,
     currentCard,
     timeCriticalCards,

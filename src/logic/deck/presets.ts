@@ -1,7 +1,6 @@
 import { useLiveQuery } from "dexie-react-hooks";
 import { v4 as uuidv4 } from "uuid";
 import { db } from "../db";
-import type { Deck, DeckOptions } from "./deck";
 
 /** The preset every deck starts with. It cannot be deleted. */
 export const DEFAULT_PRESET_ID = "default";
@@ -65,6 +64,8 @@ export const PRESET_DEFAULTS: Omit<StudyPreset, "id" | "name"> = {
   leechAction: "tag",
 };
 
+export { effectiveOptions } from "./effectiveOptions";
+
 export const FSRS_WEIGHT_COUNT = 21;
 
 export function isValidWeights(w: unknown): w is number[] {
@@ -73,39 +74,6 @@ export function isValidWeights(w: unknown): w is number[] {
     w.length === FSRS_WEIGHT_COUNT &&
     w.every((x) => typeof x === "number" && Number.isFinite(x))
   );
-}
-
-/**
- * The options that really apply to a deck: its preset's settings laid over the deck's own fields
- * (exam date, preset link). Decks made before presets, with no preset, use their own inline values.
- */
-export function effectiveOptions(
-  deck: Deck | undefined,
-  presets: Map<string, StudyPreset>
-): DeckOptions | undefined {
-  if (!deck) return undefined;
-  const preset = deck.options?.presetId
-    ? presets.get(deck.options.presetId)
-    : undefined;
-  if (!preset) return deck.options;
-  return {
-    ...deck.options,
-    dailyNewCards: preset.newCardsPerDay,
-    maxReviewsPerDay: preset.maxReviewsPerDay,
-    newCardOrder: preset.newCardOrder,
-    learningSteps: preset.learningSteps,
-    relearningSteps: preset.relearningSteps,
-    schedulingMode: preset.schedulingMode,
-    desiredRetention: preset.desiredRetention,
-    maximumInterval: preset.maximumInterval,
-    enableFuzz: preset.enableFuzz,
-    weights: preset.weights,
-    easyDays: preset.easyDays,
-    buryNewSiblings: preset.buryNewSiblings,
-    buryReviewSiblings: preset.buryReviewSiblings,
-    leechThreshold: preset.leechThreshold,
-    leechAction: preset.leechAction,
-  };
 }
 
 /** Creates the Default preset if it is missing. Safe to call every start. */

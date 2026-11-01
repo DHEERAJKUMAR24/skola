@@ -1,4 +1,6 @@
+import { genericFail } from "@/components/Notification/Notification";
 import { RichTextEditor } from "@/components/ui/RichTextEditor";
+import { prepareImage } from "@/logic/media/shrink";
 import { useSettings } from "@/logic/settings/hooks/useSettings";
 import { BubbleMenu, Editor, EditorOptions, useEditor } from "@tiptap/react";
 import React, { useMemo } from "react";
@@ -51,8 +53,12 @@ function NoteEditor({ editor, controls, className, Footer }: NoteEditorProps) {
       for (const file of Array.from(files)) {
         const [mime] = file.type.split("/");
         if (mime === "image") {
-          const url = URL.createObjectURL(file);
-          editor.commands.insertImage({ src: url });
+          // Saved on this device (and uploaded in the background), not as a temporary link that
+          // would be gone after a reload.
+          void prepareImage(file).then((prepared) => {
+            if (prepared.ok) editor.commands.insertImage({ src: prepared.ref });
+            else genericFail();
+          });
         }
       }
     }

@@ -73,3 +73,12 @@ it("accepts settings and presets rows", () => {
     ])
   ).not.toBeNull();
 });
+
+it("accepts study sessions as a synced table", () => {
+  expect(
+    validateRows([{ tbl: "studySessions", id: "s1", updatedAt: 1, data: {} }])
+  ).toHaveLength(1);
+  expect(
+    validateRows([{ tbl: "notATable", id: "s1", updatedAt: 1, data: {} }])
+  ).toBeNull();
+});

@@ -17,6 +17,8 @@ export interface Deck {
   description?: string;
   options: DeckOptions;
   color?: ColorIdentifier;
+  /** `paused` keeps the deck (and its sub-decks) out of spaced-repetition sessions. Default: studying. */
+  priority?: "studying" | "paused";
   statCache?: DeckStatCache;
 }
 

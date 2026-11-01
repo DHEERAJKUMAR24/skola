@@ -7,6 +7,7 @@ import { I18nextProvider } from "react-i18next";
 import { Outlet, useLocation } from "react-router-dom";
 import WelcomeView from "./app/WelcomeView";
 import AuthGate from "./app/login/AuthGate";
+import CreateFab from "./app/shell/CreateFab";
 import Header from "./app/shell/Header/Header";
 import Sidebar from "./app/shell/Sidebar/Sidebar";
 import {
@@ -108,6 +109,8 @@ function AppContent() {
               </div>
             </main>
           </div>
+          {/* Hidden while studying: it would sit over the answer buttons. */}
+          {!routeIsLearn && <CreateFab />}
         </div>
       ) : (
         <WelcomeView />

@@ -4,8 +4,10 @@ import { Card, HTMLtoPreviewString } from "@/logic/card/card";
 import { createCardSkeleton } from "@/logic/card/createCardSkeleton";
 import { deleteCard } from "@/logic/card/deleteCard";
 import { newCard } from "@/logic/card/newCard";
+import { syncOcclusionCards } from "@/logic/card/syncOcclusionCards";
 import { db } from "@/logic/db";
 import { Deck } from "@/logic/deck/deck";
+import { MediaImg } from "@/logic/media/MediaImg";
 import { NoteContent } from "@/logic/note/NoteContent";
 import { getNote } from "@/logic/note/getNote";
 import { newNote } from "@/logic/note/newNote";
@@ -60,14 +62,23 @@ export const ClozeNoteTypeAdapter: NoteTypeAdapter<NoteType.Cloze> = {
   },
 
   updateNote(
-    params: { text: string; occclusionNumberSet: number[] },
+    params: { text: string; occlusionNumberSet?: number[] },
     existingNote: Note<NoteType.Cloze>
   ) {
-    return db.transaction("rw", db.notes, db.cards, async () => {
+    return db.transaction("rw", db.notes, db.cards, db.decks, async () => {
       await updateNoteContent(existingNote.id, {
         type: NoteType.Cloze,
         text: params.text,
       });
+      // A deletion added while editing (say {{c2::...}}) needs its own card. Cards are never
+      // removed here: the text is saved mid-typing, when a number can briefly disappear.
+      if (params.occlusionNumberSet?.length)
+        await syncOcclusionCards(
+          existingNote.id,
+          NoteType.Cloze,
+          params.occlusionNumberSet,
+          false
+        );
     });
   },
 
@@ -197,6 +208,14 @@ const ClozeComponent = memo(
 
     const options: HTMLReactParserOptions = {
       replace(domNode) {
+        if (
+          domNode instanceof Element &&
+          domNode.name === "img" &&
+          domNode.attribs.src?.startsWith("media:")
+        )
+          return (
+            <MediaImg src={domNode.attribs.src} alt={domNode.attribs.alt} />
+          );
         if (
           domNode instanceof Element &&
           domNode.attribs.class &&

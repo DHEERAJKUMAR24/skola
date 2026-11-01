@@ -1,12 +1,15 @@
+import { copied, genericFail } from "@/components/Notification/Notification";
 import { startTourHere } from "@/components/Tour/TourHost";
 import { Menu, MenuItem } from "@/components/ui/Menu";
 import { signOut, startLogin, useAuthEmail } from "@/logic/auth";
 import { syncNow } from "@/logic/syncScheduler";
 import { type SyncStatus, useSyncStatus } from "@/logic/syncStatus";
 import {
+  IconCopy,
   IconHelp,
   IconLogin,
   IconLogout,
+  IconPlugConnected,
   IconRefresh,
   IconSettings,
   IconUser,
@@ -159,6 +162,23 @@ export function ProfileMenu({ variant, minimal = false }: ProfileMenuProps) {
         onClick={pick(startTourHere)}
       >
         Take a tour of this page
+      </MenuItem>
+      <MenuItem
+        leftSection={<IconPlugConnected size={16} />}
+        onClick={pick(() => window.open("/skills", "_blank", "noopener"))}
+      >
+        Connect an AI assistant
+      </MenuItem>
+      <MenuItem
+        leftSection={<IconCopy size={16} />}
+        onClick={pick(() => {
+          navigator.clipboard
+            .writeText(`${window.location.origin}/mcp`)
+            .then(() => copied("MCP server address"))
+            .catch(() => genericFail());
+        })}
+      >
+        Copy MCP server address
       </MenuItem>
       {email ? (
         <>

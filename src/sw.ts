@@ -15,6 +15,16 @@ const serwist = new Serwist({
   skipWaiting: true,
   clientsClaim: true,
   navigationPreload: true,
+  // Any page that cannot be fetched (login, skills, consent, ...) shows the offline page instead
+  // of the browser error. The study app itself is the precached "/" shell and never gets here.
+  fallbacks: {
+    entries: [
+      {
+        url: "/offline",
+        matcher: ({ request }) => request.destination === "document",
+      },
+    ],
+  },
   runtimeCaching: [
     // Sync and auth must always hit the network; a cached pull would hide new data.
     {

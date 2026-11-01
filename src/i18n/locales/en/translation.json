@@ -29,7 +29,11 @@
       "label": "Menu",
       "manage-cards": "Manage Cards",
       "move": "Move",
-      "options": "Options"
+      "options": "Options",
+      "practice-all": "Practice All Flashcards",
+      "priority-paused": "Paused: skipped in study",
+      "priority-studying": "Currently Studying",
+      "study": "Practice with Spaced Repetition"
     },
     "new-cards-label": "New",
     "new-cards-label_one": "1 New",
@@ -174,6 +178,41 @@
           "back": "Back",
           "front": "Front"
         },
+        "image-occlusion": {
+          "bad-image": "That file is not an image the browser can read.",
+          "boxes": "{{count}} areas",
+          "choose": "Choose an image",
+          "clear": "Remove all areas",
+          "header": "Heading (optional)",
+          "hide-all": "Hide all areas, guess one",
+          "hide-one": "Hide only the area being asked",
+          "hint": "Drag on the image to cover an area. Each area becomes its own card.",
+          "mode": "Mode",
+          "no-boxes": "Draw at least one area on the image.",
+          "paste": "You can also paste or drop an image here.",
+          "remove-box": "Remove area",
+          "replace": "Replace image",
+          "too-large": "The image is too large even after shrinking. Try a smaller one."
+        },
+        "list": {
+          "front": "Question",
+          "hint": "One item per line. Start a line with >>>, a dash or a bullet if you like; they are removed.",
+          "items": "Items to recall",
+          "ordered": "Numbered (order matters)",
+          "placeholder": ">>> First step\n>>> Second step\n>>> Third step",
+          "too-few": "Add at least two items."
+        },
+        "multiple-choice": {
+          "add-choice": "Add choice",
+          "choice-placeholder": "Choice text",
+          "choices": "Choices",
+          "correct": "Correct",
+          "explanation": "Explanation (optional)",
+          "hint": "Add at least two choices and mark at least one as correct.",
+          "multi-hint": "Select all that apply",
+          "question": "Question",
+          "remove-choice": "Remove choice"
+        },
         "normal": {
           "back": "Back",
           "front": "Front"
@@ -198,6 +237,8 @@
     "type": {
       "cloze": "Cloze",
       "image-occlusion": "Image Occlusion",
+      "list": "List Recall",
+      "multiple-choice": "Multiple Choice",
       "normal": "Normal",
       "undefined": "Undefined"
     },
@@ -303,5 +344,11 @@
     "title": "Not Found",
     "message": "We couldn't find what you are look for. Please try again.",
     "go-back-home": "Go back home"
+  },
+  "create-fab": {
+    "card": "New card",
+    "deck": "New deck",
+    "label": "Create",
+    "subdeck": "New sub-deck in {{name}}"
   }
 }

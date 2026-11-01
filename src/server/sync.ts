@@ -15,6 +15,7 @@ const TABLES = new Set([
   "reviewLogs",
   "settings",
   "presets",
+  "studySessions",
 ]);
 export const PULL_LIMIT = 500;
 

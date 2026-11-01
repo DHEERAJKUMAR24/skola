@@ -4,17 +4,22 @@ import { Card } from "./card/card";
 import { ReviewLogRecord, toReviewLogRecord } from "./card/reviewLog";
 import { Deck } from "./deck/deck";
 import type { StudyPreset } from "./deck/presets";
+import type { MediaRow } from "./media/media";
 import { NoteType } from "./note/note";
 import { Note } from "./note/note";
 import { Settings, SettingsValues } from "./settings/Settings";
-import { DeckStatistics } from "./statistics";
+import type { DeckStatistics, StudySession } from "./statistics";
 import { Tombstone, installSyncTracking } from "./syncTracking";
 
 export class Database extends Dexie {
   decks!: Table<Deck>;
   cards!: Table<Card<NoteType>>;
   notes!: Table<Note<NoteType>>;
+  /** Legacy per-day totals; replaced by studySessions, kept so no data is lost. */
   statistics!: Table<DeckStatistics>;
+  studySessions!: Table<StudySession>;
+  /** Picture bytes kept on this device; local only. The note holds a `media:` reference. */
+  media!: Table<MediaRow>;
   settings!: Table<Settings<keyof SettingsValues>>;
   reviewLogs!: Table<ReviewLogRecord>;
   tombstones!: Table<Tombstone>;
@@ -69,6 +74,22 @@ export class Database extends Dexie {
             s.updatedAt ??= Date.now();
           });
       });
+    this.version(27)
+      .stores({ studySessions: "id, deck, day" })
+      .upgrade(async (tx) => {
+        // Each old per-day total becomes one session. The id is fixed so a re-run, or the same
+        // legacy row on another device, never counts twice.
+        const legacy = await tx.table("statistics").toArray();
+        await tx.table("studySessions").bulkPut(
+          legacy.map((s) => ({
+            ...s,
+            id: `legacy-${s.deck}-${s.day}`,
+            updatedAt: Date.now(),
+          }))
+        );
+      });
+    // Local only: the bytes of pictures, uploaded to R2 in the background. Not synced.
+    this.version(28).stores({ media: "id, uploaded" });
     installSyncTracking(this);
     this.open();
   }

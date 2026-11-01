@@ -1,4 +1,5 @@
 import { NotSignedIn, isSignedIn, syncUrl } from "./auth";
+import { migrateInlineImages, uploadPending } from "./media/media";
 import { syncOnce } from "./sync";
 import { getPushDelayMs } from "./syncSettings";
 import { getSyncStatus, setSyncStatus } from "./syncStatus";
@@ -11,6 +12,7 @@ const MIN_PULL_GAP_MS = 2 * 60_000;
 const POLL_MS = 15 * 60_000;
 
 let started = false;
+let inlineChecked = false;
 let running = false;
 let lastPull = 0;
 let pushTimer: ReturnType<typeof setTimeout> | undefined;
@@ -37,6 +39,15 @@ async function run(opts: { keepalive?: boolean; pull?: boolean } = {}) {
   }
   try {
     await syncOnce(syncUrl, keepalive, pull);
+    if (!keepalive) {
+      // Pictures made on this device go to R2. Both calls do nothing, and ask the server nothing,
+      // unless there is something waiting. Moving old inline pictures is tried once per session.
+      void uploadPending();
+      if (!inlineChecked) {
+        inlineChecked = true;
+        void migrateInlineImages();
+      }
+    }
     if (pull && !keepalive) lastPull = Date.now();
     if (!keepalive)
       setSyncStatus({

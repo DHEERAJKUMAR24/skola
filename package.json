@@ -54,7 +54,9 @@
     "extract": "i18next --config i18next-parser.config.mjs 'src/**/*.{ts,tsx}'",
     "format": "biome check --apply",
     "dev": "next dev --webpack",
-    "db:push": "npx supabase db push"
+    "db:push": "npx supabase db push",
+    "db:seed": "node --env-file=.env.local --env-file=scripts/seed.env node_modules/vitest/vitest.mjs run src/server/seed.test.ts",
+    "r2:check": "node --env-file=.env.local --experimental-strip-types scripts/r2-check.mjs"
   },
   "eslintConfig": {
     "extends": [

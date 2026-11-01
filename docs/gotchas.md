@@ -4,6 +4,8 @@
 - **`z-index` cannot beat a modal `<dialog>`** (top layer). Use the Popover API (`popover="manual"` + `showPopover()`) for floating UI over modals.
 - **ts-fsrs does not enforce `maximum_interval`** in all paths; the policy overlay caps it.
 - **Training deltas** must use study-day numbers, not `floor(elapsed days)`.
+- **Service worker only exists in a production build.** Test offline with `pnpm build`, the `skola-next-prod` preview (port 3001), load `/` once, stop the server, then reload. Unregister the worker afterwards or a stale one will answer on that port.
+- **`reloadOnOnline` must stay false** in `next.config.mjs`; the Serwist default reloads the page when the connection returns, which would interrupt studying.
 - **Race on first run:** `ensureDefaultPreset` can be called twice; the duplicate add error is swallowed on purpose.
 - **Settings sync** needs `updatedAt` on settings rows (Dexie v26 backfill) and key path `key`.
 - **Order of side effects:** roll back before throwing in OTP and refresh-token flows; reject login cookies for users that no longer exist.

@@ -3,6 +3,7 @@ import { useCallback, useMemo } from "react";
 import { db } from "../db";
 import type { Deck } from "../deck/deck";
 import { effectiveOptions, usePresets } from "../deck/presets";
+import { isPausedDeck } from "../deck/priority";
 import type { NoteType } from "../note/note";
 import { resolveExam, scheduleCard } from "../scheduling/policy";
 import { defaultSettings } from "../settings/defaultSettings";
@@ -71,8 +72,15 @@ export function useCardScheduling() {
     [optionsOf]
   );
 
+  const isPaused = useCallback(
+    (deckId: string) =>
+      isPausedDeck(decksById?.get(deckId), decksById ?? new Map()),
+    [decksById]
+  );
+
   return {
     scheduleFor,
+    isPaused,
     optionsOf,
     limitOf,
     reviewLimitOf,

@@ -56,7 +56,10 @@ export default async function ConsentPage({
         </Text>
         <Text variant="dimmed">
           It will be able to use:{" "}
-          {r.scope === "mcp" ? "your decks and cards through MCP" : "sync"}.
+          {r.scope === "mcp"
+            ? "your decks, cards and skills through MCP"
+            : "sync"}
+          .
         </Text>
         <Button type="submit" name="decision" value="allow" variant="primary">
           Allow

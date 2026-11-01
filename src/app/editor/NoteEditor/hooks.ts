@@ -116,3 +116,15 @@ export function useClearEditors(...editors: (Editor | null)[]) {
     });
   }, [editors]);
 }
+
+/** Runs the debounced save whenever one of `deps` changes (not on the first render). */
+export function useAutoSaveOnChange(save: () => void, deps: unknown[]) {
+  const first = useRef(true);
+  useEffect(() => {
+    if (first.current) {
+      first.current = false;
+      return;
+    }
+    save();
+  }, deps);
+}

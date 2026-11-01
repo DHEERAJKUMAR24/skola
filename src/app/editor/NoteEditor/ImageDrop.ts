@@ -1,3 +1,4 @@
+import { isMediaRef, resolveMedia } from "@/logic/media/media";
 import { Image } from "@tiptap/extension-image";
 import { Selection } from "@tiptap/pm/state";
 
@@ -20,7 +21,37 @@ declare module "@tiptap/core" {
   }
 }
 
+const BLANK =
+  "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
+
 const ImageDrop = Image.extend<{}>({
+  // The note keeps `media:<sha>`; the editor shows the picture from this device's copy.
+  addNodeView() {
+    return ({ node }) => {
+      const img = document.createElement("img");
+      const show = (src: string, alt?: string | null) => {
+        img.alt = alt ?? "";
+        if (!isMediaRef(src)) {
+          img.src = src;
+          return;
+        }
+        img.src = BLANK;
+        resolveMedia(src).then((url) => {
+          if (url) img.src = url;
+        });
+      };
+      show(node.attrs.src, node.attrs.alt);
+      return {
+        dom: img,
+        update(next) {
+          if (next.type !== node.type) return false;
+          show(next.attrs.src, next.attrs.alt);
+          return true;
+        },
+      };
+    };
+  },
+
   addCommands() {
     // const { name: nodeTypeName } = this;
     const nodeTypeName = "image";

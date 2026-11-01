@@ -18,6 +18,7 @@ const TABLES = [
   "reviewLogs",
   "settings",
   "presets",
+  "studySessions",
 ] as const;
 
 /** Settings are keyed by `key`; every other synced table by `id`. */

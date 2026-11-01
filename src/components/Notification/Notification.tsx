@@ -35,6 +35,15 @@ export function successfullySaved() {
   );
 }
 
+export function copied(what: string) {
+  return showNotification(
+    "Copied",
+    `${what} copied to the clipboard.`,
+    "success",
+    2000
+  );
+}
+
 export function successfullyAdded() {
   return showNotification(
     "Card Added",
