@@ -18,7 +18,8 @@ const serwist = new Serwist({
   runtimeCaching: [
     // Sync and auth must always hit the network; a cached pull would hide new data.
     {
-      matcher: ({ url }) => url.pathname.startsWith("/api/"),
+      matcher: ({ url }) =>
+        /^\/(api|oauth|login|signup|forgot-password|\.well-known)(\/|$)/.test(url.pathname),
       handler: new NetworkOnly(),
     },
     ...defaultCache,

@@ -1,9 +1,12 @@
 import "fake-indexeddb/auto";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { db } from "./db";
+import { NotSignedIn } from "./auth";
 import { syncOnce } from "./sync";
 
-beforeEach(() => localStorage.setItem("auth.token", "t"));
+const signIn = (expiresAt = Date.now() + 3600_000) =>
+  localStorage.setItem("auth.tokens", JSON.stringify({ access: "a", refresh: "r", expiresAt }));
+beforeEach(() => signIn());
 afterEach(() => vi.unstubAllGlobals());
 
 it("pushes local rows with Dates tagged, and applies pulled rows with Dates restored", async () => {
@@ -47,18 +50,41 @@ it("does not overwrite a newer local row with an older pulled one", async () => 
   expect(((await db.cards.get("c3")) as unknown as { deck: string }).deck).toBe("d");
 });
 
-it("does nothing without a token, and signs out on 401", async () => {
-  const fetchMock = vi.fn(async () => new Response("{}", { status: 401 }));
+it("does nothing without tokens", async () => {
+  const fetchMock = vi.fn(async () => new Response("{}"));
   vi.stubGlobal("fetch", fetchMock);
-
-  localStorage.removeItem("auth.token");
+  localStorage.removeItem("auth.tokens");
   await syncOnce("http://x");
   expect(fetchMock).not.toHaveBeenCalled();
+});
 
-  localStorage.setItem("auth.token", "stale");
+it("refreshes an expired access token, then signs out if the refresh is rejected", async () => {
+  const calls: string[] = [];
+  vi.stubGlobal("fetch", async (url: string) => {
+    calls.push(url);
+    return new Response("{}", { status: url.includes("/oauth/token") ? 400 : 401 });
+  });
+  signIn(Date.now() - 1000);
   await db.cards.add({ id: "c9", deck: "d" } as never);
-  await expect(syncOnce("http://x")).rejects.toThrow("Signed out");
-  expect(localStorage.getItem("auth.token")).toBeNull();
+  await expect(syncOnce("http://x")).rejects.toBeInstanceOf(NotSignedIn);
+  expect(calls).toEqual(["/oauth/token"]);
+  expect(localStorage.getItem("auth.tokens")).toBeNull();
+});
+
+it("retries once with a refreshed token after a 401", async () => {
+  const seen: string[] = [];
+  vi.stubGlobal("fetch", async (url: string, init?: { headers?: Record<string, string> }) => {
+    if (url.includes("/oauth/token"))
+      return Response.json({ access_token: "new", refresh_token: "r2", expires_in: 3600 });
+    seen.push(init?.headers?.authorization ?? "");
+    if (init?.headers?.authorization === "Bearer a") return new Response("{}", { status: 401 });
+    return Response.json({ rows: [], seq: 0, more: false });
+  });
+  await syncOnce("http://x");
+  expect(seen[0]).toBe("Bearer a");
+  expect(seen.length).toBeGreaterThan(1);
+  expect(seen.slice(1).every((h) => h === "Bearer new")).toBe(true);
+  expect(JSON.parse(localStorage.getItem("auth.tokens") as string).refresh).toBe("r2");
 });
 
 it("skips a malformed pulled row instead of failing the whole pull", async () => {

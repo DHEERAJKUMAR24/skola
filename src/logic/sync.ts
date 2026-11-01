@@ -1,4 +1,4 @@
-import { getToken, signOut, syncUrl } from "./auth";
+import { NotSignedIn, authFetch, getAccessTokenSync, isSignedIn, syncUrl } from "./auth";
 import { db } from "./db";
 import { syncFlags } from "./syncTracking";
 
@@ -77,37 +77,36 @@ async function applyRemote(rows: WireRow[]) {
   }
 }
 
-const authHeader = (): Record<string, string> => ({ authorization: `Bearer ${getToken()}` });
-
-async function check(res: Response, what: string) {
-  if (res.status === 401) {
-    signOut();
-    throw new Error("Signed out: session expired");
-  }
+function check(res: Response, what: string) {
   if (!res.ok) throw new Error(`${what} failed: ${res.status}`);
 }
 
+function pushOnHide(url: string, init: RequestInit) {
+  const token = getAccessTokenSync();
+  return token
+    ? fetch(url, { ...init, headers: { authorization: `Bearer ${token}` } })
+    : null;
+}
+
 export async function syncOnce(baseUrl: string, keepalive = false) {
-  if (!getToken()) return;
+  if (!isSignedIn()) return;
   const since = getNum(PUSHED_KEY);
   const rows = await collectChanges(since);
   if (rows.length) {
-    const res = await fetch(`${baseUrl}/sync/push`, {
-      method: "POST",
-      headers: authHeader(),
-      body: JSON.stringify({ rows }),
-      keepalive,
-    });
-    await check(res, "push");
+    const init = { method: "POST", body: JSON.stringify({ rows }), keepalive };
+    // Page hide cannot await a token refresh, so it only uses a token that is still valid.
+    const res = keepalive
+      ? await pushOnHide(`${baseUrl}/sync/push`, init)
+      : await authFetch(`${baseUrl}/sync/push`, init);
+    if (!res) return;
+    check(res, "push");
     localStorage.setItem(PUSHED_KEY, String(Math.max(since, ...rows.map((r) => r.updatedAt))));
   }
   if (keepalive) return;
   let more = true;
   while (more) {
-    const res = await fetch(`${baseUrl}/sync/pull?since=${getNum(SEQ_KEY)}`, {
-      headers: authHeader(),
-    });
-    await check(res, "pull");
+    const res = await authFetch(`${baseUrl}/sync/pull?since=${getNum(SEQ_KEY)}`);
+    check(res, "pull");
     const body = (await res.json()) as { rows: WireRow[]; seq: number; more: boolean };
     await applyRemote(body.rows);
     localStorage.setItem(SEQ_KEY, String(body.seq));
@@ -130,7 +129,8 @@ export function startSync(baseUrl: string) {
     try {
       await syncOnce(baseUrl, keepalive);
     } catch (e) {
-      console.warn("sync failed", e);
+      // Signed out mid-sync is expected, not an error worth logging.
+      if (!(e instanceof NotSignedIn)) console.warn("sync failed", e);
     } finally {
       running = false;
     }

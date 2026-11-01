@@ -1,14 +1,16 @@
-import { getAuth } from "@/server/auth";
 import { getDb } from "@/server/db";
+import { audiences, authenticate, origin, unauthorized } from "@/server/oauth";
 import { pullRows } from "@/server/sync";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(req: Request) {
-  const session = await getAuth().api.getSession({ headers: req.headers });
-  if (!session) return Response.json({ error: "unauthorized" }, { status: 401 });
+  const o = origin(req);
+  const db = getDb();
+  const who = await authenticate(db, req, audiences(o).api);
+  if (!who || who.scope !== "sync") return unauthorized(o);
   const since = Number(new URL(req.url).searchParams.get("since") ?? 0);
   if (!Number.isInteger(since) || since < 0)
     return Response.json({ error: "bad since" }, { status: 400 });
-  return Response.json(await pullRows(getDb(), session.user.id, since));
+  return Response.json(await pullRows(db, who.userId, since));
 }
