@@ -12,8 +12,8 @@ Single source of truth for "where are we". Rewrite the sections below at the end
 FSRS-6 with policy overlay; presets with easy days, leech, sibling burying, daily limits, new-card order, personal weights, simulator; exam dates with inheritance; card scheduling modal, tags, bulk actions; JS interview seed; Next.js + Supabase + Auth.js + OAuth server; sync of decks, cards, notes, settings, presets with debounced push and a countdown ring; InfoTip tooltips on preset and deck forms; driver.js tours for home, deck, learn, notes, presets.
 
 ## Unverified (do these before trusting the feature)
-1. FSRS optimizer on real history in a browser (WASM worker under Next webpack; needs 400+ reviews). Method: insert synthetic `reviewLogs` with fake card ids through raw IndexedDB, run Optimize in Settings > Study presets, then delete them.
-2. Workload simulator output against a known reference.
+1. FSRS optimizer on a real person's history (it works on synthetic history in Chrome, see the 2026-11-02 log). Also Firefox, and Safari, which cannot run it (no COEP `credentialless`).
+2. COOP/COEP headers: R2 pictures (needs real R2), the OAuth pages and the offline shell served by the service worker are not re-checked since the headers were added.
 3. Two-device sync of presets and `#toursSeen`.
 4. Tours on Deck, Learn and Presets pages (the Notes and Home tours were seen working).
 
@@ -51,6 +51,10 @@ FSRS-6 with policy overlay; presets with easy days, leech, sibling burying, dail
 - Tokens are in `localStorage`; no per-IP rate limit; no email verification at sign-up (see SPEC section 6.2).
 
 ## Session log
+- 2026-11-02 (mcp cors): "authentication successful, action discovery failed" traced to the `/mcp` CORS preflight allowing only `content-type, authorization`. Widened (new `src/server/cors.ts`), 401 now has CORS headers, `www-authenticate` and `mcp-session-id` exposed, `mcpHttp.test.ts` added, checked with curl against dev. Not confirmed on the client that failed (ChatGPT and Claude web are server-side, so CORS would not explain those); not deployed.
+- 2026-11-02 (verify, round 2): ran the production build (`pnpm start`, port 3003) and dev (3002) in headless Chrome over CDP with the JS sample: study flow with Again/Hard/Good/Easy keys (shown interval equals stored due, reps +1, lapse counted, a review log per answer), deck and card details modals, optimizer in the prod bundle, COOP/COEP headers on `/`, `/offline`, `/sw.js`, `/skills`, a cross-origin image still loads. "View details" menu items no longer need developer mode. Service worker did not register in headless Chrome, so the offline shell under COEP is unchecked.
+- 2026-11-02 (verify): optimizer was broken in a real browser, two causes. (1) fsrs-browser needs a cross-origin isolated page: added COOP/COEP headers. (2) `buildTrainingSet` sent one item per card; the trainer wants one item per history prefix and no all-same-day items: fixed, test updated. Verified end to end in headless Chrome over CDP (synthetic 2676 reviews, 21 weights saved). Simulator checked against an independent Monte Carlo reference (`simulate.reference.test.ts`). The synthetic seed script is not kept; it wrote `reviewLogs` rows with ids `syn-*` into a throwaway browser profile only.
+- 2026-11-02 (fsrs audit): added `scheduling/lifecycle.test.ts` (15 cases: state flow, retention property, caps, whole-day, fuzz, exam) and `scheduling/summary.ts`. Card and deck "View details" modals now show schedule (next intervals per answer, due per day, overdue, memory averages). Not checked in a browser.
 - 2026-11-01 (skills): agent skills in Postgres with default + per-user skills, full CRUD over MCP, llms.txt, /skills pages, live editor; verified with a real OAuth login.
 - 2026-11-01 (later): deck menu study/practice items, deck priority (paused decks skipped in study), MCP server with 10 tools, verified with a real OAuth flow. Pure helpers `deck/effectiveOptions.ts` and `note/tagNormalize.ts` split out so the server can import them without Dexie.
 - 2026-11-01: presets, FSRS options, optimizer, simulator, tours, tooltips, color picker, popover tooltip fix, preset sort fix, docs restructure (AGENTS.md, ADRs, HANDOFF).

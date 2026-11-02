@@ -5,7 +5,6 @@ import { useHotkeys } from "@/lib/hooks/useHotkeys";
 import { db } from "@/logic/db";
 import { Deck } from "@/logic/deck/deck";
 import { deleteDeck } from "@/logic/deck/deleteDeck";
-import { useSetting } from "@/logic/settings/hooks/useSetting";
 import { useShowShortcutHints } from "@/logic/settings/hooks/useShowShortcutHints";
 import {
   IconArrowsExchange,
@@ -41,8 +40,6 @@ function DeckMenu({
 }: DeckMenuProps) {
   const navigate = useNavigate();
   const [t] = useTranslation();
-
-  const [developerMode] = useSetting("#developerMode");
 
   const [deleteModalOpened, setDeleteModalOpened] = useState<boolean>(false);
   const [moveModalOpened, setMoveModalOpened] = useState<boolean>(false);
@@ -201,31 +198,29 @@ function DeckMenu({
         >
           {t("deck.menu.import-cards")}
         </MenuItem>
-        {developerMode ? (
-          <MenuItem
-            leftSection={<IconCode />}
-            rightSection={
-              withShortcuts &&
-              showShortcutHints && (
-                <span
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "0.25rem",
-                  }}
-                >
-                  <Kbd>&#8679; d</Kbd>
-                </span>
-              )
-            }
-            onClick={() => {
-              setHasOpenedDebug(true);
-              setDebugModalOpened(true);
-            }}
-          >
-            {t("deck.menu.debug")}
-          </MenuItem>
-        ) : null}
+        <MenuItem
+          leftSection={<IconCode />}
+          rightSection={
+            withShortcuts &&
+            showShortcutHints && (
+              <span
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.25rem",
+                }}
+              >
+                <Kbd>&#8679; d</Kbd>
+              </span>
+            )
+          }
+          onClick={() => {
+            setHasOpenedDebug(true);
+            setDebugModalOpened(true);
+          }}
+        >
+          {t("deck.menu.debug")}
+        </MenuItem>
         <MenuItem
           color="red"
           leftSection={<IconTrash />}

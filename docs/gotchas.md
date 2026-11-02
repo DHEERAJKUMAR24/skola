@@ -13,3 +13,12 @@
 - **Next dev + HMR** can leave the page unstyled after large edits; navigate to a fresh URL.
 - **`role="status"`** triggers Biome; use `<output>`.
 - **Removed exports:** `FSRS_DEFAULTS` stays only in `fsrsOptions.ts` for tests; `toFormState`/`fromFormState`/`DeckFsrsFields` are gone, use `examForm.ts` and `DeckStudyFields`.
+
+## Optimizer (fsrs-browser)
+- `computeParameters` panics with `unreachable` on bad input. The real message (`NotEnoughData`, `Invalid FSRS item: at least one review with delta_t > 0 is required`) goes to the worker console only. To debug, temporarily override `console.error` in `optimizer.worker.ts` and return it in the error.
+- Without cross-origin isolation `initThreadPool` throws "SharedArrayBuffer transfer requires self.crossOriginIsolated". The headers live in `next.config.mjs`; a new cross-origin embed (iframe, no-cors image) may need CORS or CORP once it is on.
+- Rows seeded with raw IndexedDB do not wake Dexie live queries: reload the page.
+
+## MCP and CORS
+- Browser MCP clients (Inspector, web apps) send `mcp-protocol-version`, `mcp-session-id` and `accept` after `initialize` and read `WWW-Authenticate` from the 401. `src/server/cors.ts` allows and exposes them, and `unauthorized()` carries the CORS headers. If sign-in works but tool discovery fails, check the preflight first. `mcpHttp.test.ts` covers it. The server is stateless (it never issues a session id).
+

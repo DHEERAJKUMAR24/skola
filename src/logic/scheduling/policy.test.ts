@@ -273,3 +273,33 @@ describe("exam forecast", () => {
     });
   });
 });
+
+describe("deck schedule summary", () => {
+  it("buckets due cards by study day and averages memory", async () => {
+    const { deckSchedule } = await import("./summary");
+    const mk = (days: number, extra = {}) => ({
+      model: { ...reviewCard(), due: new Date(NOW.getTime() + days * DAY_MS) },
+      ...extra,
+    });
+    const s = deckSchedule(
+      [
+        mk(-2),
+        mk(0.1),
+        mk(1),
+        mk(30),
+        mk(1, { suspended: true }),
+        { model: createEmptyCard(NOW) },
+      ],
+      NOW,
+      4,
+      [...default_w]
+    );
+    expect(s.overdue).toBe(1);
+    expect(s.perDay.reduce((a, b) => a + b, 0)).toBe(2);
+    expect(s.later).toBe(1);
+    expect(s.studied).toBe(5);
+    expect(s.newCards).toBe(1);
+    expect(s.mature).toBe(5);
+    expect(s.avgStability).toBe(40);
+  });
+});

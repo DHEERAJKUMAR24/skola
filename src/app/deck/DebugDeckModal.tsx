@@ -4,6 +4,10 @@ import { useCardsOf } from "@/logic/card/hooks/useCardsOf";
 import { useStatesOf } from "@/logic/card/hooks/useStatesOf";
 import { useSubDecks } from "@/logic/deck/hooks/useSubDecks";
 import { useSuperDecks } from "@/logic/deck/hooks/useSuperDecks";
+import { deckSchedule } from "@/logic/scheduling/summary";
+import { defaultSettings } from "@/logic/settings/defaultSettings";
+import { useSetting } from "@/logic/settings/hooks/useSetting";
+import { useMemo } from "react";
 import { State } from "ts-fsrs";
 import { Deck } from "../../logic/deck/deck";
 import "./DebugDeckModal.css";
@@ -21,9 +25,35 @@ function DebugDeckModal({ opened, setOpened, deck }: DebugDeckModalProps) {
   const states = useStatesOf(cards ?? []);
   const [superDecks] = useSuperDecks(deck);
   const [subDecks] = useSubDecks(deck);
+  const [wText] = useSetting("#globalScheduler_w");
+  const [newDayStartHour] = useSetting("#newDayStartHour");
+  const sched = useMemo(
+    () =>
+      deckSchedule(
+        cards ?? [],
+        new Date(),
+        newDayStartHour,
+        (wText ?? defaultSettings["#globalScheduler_w"]).split(",").map(Number)
+      ),
+    [cards, wText, newDayStartHour, opened]
+  );
+  const dayLabel = (i: number) =>
+    i === 0
+      ? "Today"
+      : i === 1
+        ? "Tomorrow"
+        : new Date(Date.now() + i * 86_400_000).toLocaleDateString(undefined, {
+            weekday: "short",
+            day: "numeric",
+            month: "short",
+          });
 
   return (
-    <Modal opened={opened} onClose={() => setOpened(false)} title="Debug">
+    <Modal
+      opened={opened}
+      onClose={() => setOpened(false)}
+      title="Deck details"
+    >
       <div className={BASE}>
         {deck ? (
           <table className={`${BASE}__table`}>
@@ -77,6 +107,68 @@ function DebugDeckModal({ opened, setOpened, deck }: DebugDeckModalProps) {
               <tr>
                 <th>Contained Card Length:</th>
                 <td>{cards?.length}</td>
+              </tr>
+              <tr>
+                <th colSpan={2} className={`${BASE}__section-header`}>
+                  Schedule (cards due)
+                </th>
+              </tr>
+              <tr>
+                <th>Overdue:</th>
+                <td>{sched.overdue}</td>
+              </tr>
+              {sched.perDay.map((n, i) => (
+                <tr key={dayLabel(i)}>
+                  <th>{dayLabel(i)}:</th>
+                  <td>{n}</td>
+                </tr>
+              ))}
+              <tr>
+                <th>Later:</th>
+                <td>{sched.later}</td>
+              </tr>
+              <tr>
+                <th colSpan={2} className={`${BASE}__section-header`}>
+                  Memory
+                </th>
+              </tr>
+              <tr>
+                <th>Studied / new:</th>
+                <td>
+                  {sched.studied} / {sched.newCards}
+                </td>
+              </tr>
+              <tr>
+                <th>Mature (21d+):</th>
+                <td>{sched.mature}</td>
+              </tr>
+              <tr>
+                <th>Avg recall now:</th>
+                <td>
+                  {sched.studied
+                    ? `${Math.round(sched.avgRecall * 100)}%`
+                    : "-"}
+                </td>
+              </tr>
+              <tr>
+                <th>Avg stability:</th>
+                <td>
+                  {sched.studied
+                    ? `${sched.avgStability.toFixed(1)} days`
+                    : "-"}
+                </td>
+              </tr>
+              <tr>
+                <th>Avg difficulty:</th>
+                <td>
+                  {sched.studied
+                    ? `${sched.avgDifficulty.toFixed(1)} of 10`
+                    : "-"}
+                </td>
+              </tr>
+              <tr>
+                <th>Total lapses:</th>
+                <td>{sched.lapses}</td>
               </tr>
               <tr>
                 <th colSpan={2} className={`${BASE}__section-header`}>

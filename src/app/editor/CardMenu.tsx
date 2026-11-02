@@ -13,7 +13,6 @@ import { deleteNote } from "@/logic/note/deleteNote";
 import { getNote } from "@/logic/note/getNote";
 import { NoteType } from "@/logic/note/note";
 import { Note } from "@/logic/note/note";
-import { useSetting } from "@/logic/settings/hooks/useSetting";
 import { useShowShortcutHints } from "@/logic/settings/hooks/useShowShortcutHints";
 import {
   IconAdjustmentsHorizontal,
@@ -37,8 +36,6 @@ interface CardMenuProps {
 
 function CardMenu({ card, onDelete, onHidden }: CardMenuProps) {
   const navigate = useNavigate();
-
-  const [developerMode] = useSetting("#developerMode");
 
   const [debugModalOpened, setDebugModalOpened] = useState<boolean>(false);
   const [statisticsModalOpened, setStatisticsModalOpened] =
@@ -111,21 +108,19 @@ function CardMenu({ card, onDelete, onHidden }: CardMenuProps) {
         >
           {t("card.menu.options")}
         </MenuItem>
-        {developerMode && (
-          <MenuItem
-            leftSection={<IconCode size={16} />}
-            rightSection={
-              showShortcutHints && (
-                <Group gap="xs" align="center">
-                  <Kbd>&#8679; d</Kbd>
-                </Group>
-              )
-            }
-            onClick={() => setDebugModalOpened(true)}
-          >
-            {t("card.menu.debug")}
-          </MenuItem>
-        )}
+        <MenuItem
+          leftSection={<IconCode size={16} />}
+          rightSection={
+            showShortcutHints && (
+              <Group gap="xs" align="center">
+                <Kbd>&#8679; d</Kbd>
+              </Group>
+            )
+          }
+          onClick={() => setDebugModalOpened(true)}
+        >
+          {t("card.menu.debug")}
+        </MenuItem>
         <MenuItem
           color="red"
           leftSection={<IconTrash size={16} />}

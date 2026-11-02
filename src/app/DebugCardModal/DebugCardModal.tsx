@@ -13,7 +13,11 @@ interface DebugCardModalProps {
 function DebugCardModal({ opened, setOpened, card }: DebugCardModalProps) {
   try {
     return (
-      <Modal opened={opened} onClose={() => setOpened(false)} title="Debug">
+      <Modal
+        opened={opened}
+        onClose={() => setOpened(false)}
+        title="Card details"
+      >
         <DebugCardTable card={card} />
       </Modal>
     );

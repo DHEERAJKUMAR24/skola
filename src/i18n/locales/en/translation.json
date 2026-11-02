@@ -5,7 +5,7 @@
       "title": "Delete Card"
     },
     "menu": {
-      "debug": "Debug",
+      "debug": "View details",
       "delete": "Delete",
       "edit": "Edit",
       "move": "Move",
@@ -22,7 +22,7 @@
     "learning-cards-label_one": "1 Learning",
     "learning-cards-label_other": "{{ count }} Learning",
     "menu": {
-      "debug": "Debug",
+      "debug": "View details",
       "delete": "Delete",
       "edit": "Edit",
       "import-cards": "Import Cards",

@@ -10,4 +10,4 @@ Parameter optimization is heavy and the app is local-first and free-tier.
 Use fsrs-browser in a Web Worker, gated at 400 reviews, saving weights onto a preset.
 
 ## Consequences
-Not yet verified on real history in a browser (see HANDOFF). Training uses study-day numbers for deltas.
+Verified in Chrome on synthetic history. Training uses study-day numbers for deltas and one item per history prefix. The WASM uses threads, so the app is served cross-origin isolated (COOP same-origin, COEP credentialless); Safari cannot run it.

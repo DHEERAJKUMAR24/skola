@@ -24,7 +24,10 @@ Uses today's activity (`useTodayActivity`: new cards seen, reviews per deck) to 
 ## Optimizer and simulator
 - `src/logic/fsrs/optimizer.ts` + `optimizer.worker.ts`: fsrs-browser WASM in a worker; trains on review logs using study-day numbers (not floor of elapsed days); gated by `MIN_OPTIMIZE_REVIEWS = 400`; result saved as preset weights.
 - `src/logic/fsrs/simulate.ts` + `WorkloadSimulator.tsx`: projects reviews per day and cards known for a retention value.
-- Not yet verified in a real browser on real history. Plan: insert synthetic review logs with fake card ids through raw IndexedDB, run, delete them.
+- Verified in Chrome (2026-11-02) on 2676 synthetic reviews over 300 cards: trains in about 2 s, saves 21 weights to the preset. Not yet tried on a real person's history.
+- The trainer takes one item per history prefix (reviews 1..k, k >= 2) and rejects an item whose reviews are all same-day, so `buildTrainingSet` expands each card that way; `lengths` is per item, `reviews` counts real reviews.
+- It needs SharedArrayBuffer, so every page is served with `Cross-Origin-Opener-Policy: same-origin` and `Cross-Origin-Embedder-Policy: credentialless` (`next.config.mjs`). Safari has no `credentialless`: `optimizeWeights` then fails with a clear message.
+- Simulator checked against an independent Monte Carlo reference (`simulate.reference.test.ts`). It models Good and Again only.
 
 ## Seed
 `src/logic/seed/jsInterview.ts` builds Programming Languages > JavaScript > 7 concepts x 6 cards with tags, presets Default / Exam prep (95%) / Whole days, and an exam date on JavaScript. Optional simulated review history.

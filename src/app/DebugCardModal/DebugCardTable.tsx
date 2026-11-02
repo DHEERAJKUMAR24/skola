@@ -1,5 +1,11 @@
 import { Text } from "@/components/ui/Text";
+import { useCardScheduling } from "@/logic/card/CardScheduler";
 import { NoteType } from "@/logic/note/note";
+import { recallAfter } from "@/logic/scheduling/forecast";
+import { DAY_MS } from "@/logic/scheduling/policy";
+import { formatSpan } from "@/logic/scheduling/summary";
+import { defaultSettings } from "@/logic/settings/defaultSettings";
+import { useSetting } from "@/logic/settings/hooks/useSetting";
 import { useLiveQuery } from "dexie-react-hooks";
 import { Fragment } from "react";
 import { Rating, State } from "ts-fsrs";
@@ -23,6 +29,9 @@ export default function DebugCardTable({
       [card?.id]
     ) ?? [];
 
+  const { scheduleFor, optionsOf } = useCardScheduling();
+  const [wText] = useSetting("#globalScheduler_w");
+
   if (!card) {
     return (
       <Text size="sm" variant="dimmed" className={`${BASE}__empty`}>
@@ -31,8 +40,92 @@ export default function DebugCardTable({
     );
   }
 
+  const now = new Date();
+  const m = card.model;
+  const isNew = m.state === State.New;
+  const w = (wText ?? defaultSettings["#globalScheduler_w"])
+    .split(",")
+    .map(Number);
+  const recall = isNew
+    ? null
+    : recallAfter(
+        m.stability,
+        m.last_review
+          ? (now.getTime() - new Date(m.last_review).getTime()) / DAY_MS
+          : 0,
+        w
+      );
+  const next = scheduleFor(card, now);
+  const o = optionsOf(card.deck);
+  const dueMs = new Date(m.due).getTime() - now.getTime();
+
   return (
     <div className={BASE}>
+      <table className={`${BASE}__table`}>
+        <thead>
+          <tr>
+            <th colSpan={2} className={`${BASE}__section-header`}>
+              Schedule
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <th>Status:</th>
+            <td>
+              {State[m.state]}
+              {card.suspended ? ", suspended" : ""}
+              {card.buriedUntil && card.buriedUntil > Date.now()
+                ? ", buried until tomorrow"
+                : ""}
+            </td>
+          </tr>
+          <tr>
+            <th>Next review:</th>
+            <td>
+              {isNew
+                ? "Not scheduled yet"
+                : `${new Date(m.due).toLocaleString()} (${dueMs <= 0 ? `overdue ${formatSpan(-dueMs)}` : `in ${formatSpan(dueMs)}`})`}
+            </td>
+          </tr>
+          <tr>
+            <th>Recall now:</th>
+            <td>{recall === null ? "-" : `${Math.round(recall * 100)}%`}</td>
+          </tr>
+          <tr>
+            <th>Target retention:</th>
+            <td>
+              {Math.round(
+                (card.fsrsOverride?.desiredRetention ??
+                  o?.desiredRetention ??
+                  0.9) * 100
+              )}
+              %{card.fsrsOverride?.desiredRetention ? " (this card)" : ""}
+            </td>
+          </tr>
+          <tr>
+            <th>If you answer:</th>
+            <td>
+              {[
+                [Rating.Again, "Again"],
+                [Rating.Hard, "Hard"],
+                [Rating.Good, "Good"],
+                [Rating.Easy, "Easy"],
+              ]
+                .map(
+                  ([g, label]) =>
+                    `${label} ${formatSpan(next[g as 1 | 2 | 3 | 4].card.due.getTime() - now.getTime())}`
+                )
+                .join(" · ")}
+            </td>
+          </tr>
+          <tr>
+            <th>Created:</th>
+            <td>{new Date(card.creationDate).toLocaleDateString()}</td>
+          </tr>
+        </tbody>
+      </table>
+
       <table className={`${BASE}__table`}>
         <tbody>
           <tr>
