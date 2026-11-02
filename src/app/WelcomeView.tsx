@@ -11,7 +11,7 @@ export default function WelcomeView() {
     <div className={BASE}>
       <div className={`${BASE}__container`}>
         <header className={`${BASE}__header`}>
-          <h1 className={`${BASE}__title`}>Skola</h1>
+          <h1 className={`${BASE}__title`}>Skola++</h1>
           <p className={`${BASE}__tagline`}>
             A local-first spaced-repetition flashcard app right here in your
             browser.
@@ -108,7 +108,7 @@ export default function WelcomeView() {
         <footer className={`${BASE}__footer`}>
           <div className={`${BASE}__footer-branding`}>
             <img src="/logo.svg" alt="" className={`${BASE}__footer-logo`} />
-            <span className={`${BASE}__footer-name`}>Skola</span>
+            <span className={`${BASE}__footer-name`}>Skola++</span>
           </div>
           <p className={`${BASE}__footer-text`}>
             Still in early development. Expect bugs and evolving features.{" "}

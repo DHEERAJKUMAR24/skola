@@ -29,7 +29,9 @@ export async function POST(req: Request) {
   const batch = Array.isArray(body);
   const replies = (
     await Promise.all(
-      (batch ? body : [body]).map((m: object) => handleRpc(db, who.userId, m))
+      (batch ? body : [body]).map((m: object) =>
+        handleRpc(db, who.userId, m, o)
+      )
     )
   ).filter(Boolean);
   if (!replies.length) return new Response(null, { status: 202 });

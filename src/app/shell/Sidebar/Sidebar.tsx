@@ -56,12 +56,12 @@ function Sidebar({ menuOpened, menuHandlers }: SidebarProps) {
             <div className={`${BASE}__brand`}>
               <img
                 src="/logo.svg"
-                alt="Skola Logo"
+                alt="Skola++ logo"
                 className={`${BASE}__logo`}
               />
               {!minimalMode && (
                 <div className={`${BASE}__brand-text`}>
-                  <h1 className={`${BASE}__title`}>Skola</h1>
+                  <h1 className={`${BASE}__title`}>Skola++</h1>
                   <div className={`${BASE}__version`}>v{APP_VERSION}</div>
                 </div>
               )}

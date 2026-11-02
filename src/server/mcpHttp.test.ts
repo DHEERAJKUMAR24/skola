@@ -105,3 +105,23 @@ it("the 401 challenge leads to metadata for the mcp resource, so tokens get the 
   expect(meta.resource).toBe("https://skola.example/mcp");
   expect(meta.scopes_supported).toEqual(["mcp"]);
 });
+
+it("initialize shows the Skola++ title and icons, keeping the stable server name", async () => {
+  const msg = { jsonrpc: "2.0", id: 1, method: "initialize", params: {} };
+  const r = (await handleRpc(db, "u1", msg, "https://skola.example")) as {
+    result: {
+      serverInfo: {
+        name: string;
+        title: string;
+        icons: { src: string; mimeType: string }[];
+      };
+    };
+  };
+  const info = r.result.serverInfo;
+  expect(info.name).toBe("skola");
+  expect(info.title).toBe("Skola++");
+  expect(info.icons.map((i) => i.src)).toEqual([
+    "https://skola.example/logo512.png",
+    "https://skola.example/logo.svg",
+  ]);
+});

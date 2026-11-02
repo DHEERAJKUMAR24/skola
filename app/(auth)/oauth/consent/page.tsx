@@ -51,8 +51,9 @@ export default async function ConsentPage({
         <input key={k} type="hidden" name={k} value={v} />
       ))}
       <Stack gap="md" align="start">
+        <img src="/logo.svg" alt="Skola++" width={56} height={56} />
         <Text>
-          <strong>{r.client.name}</strong> wants to access your Skola account.
+          <strong>{r.client.name}</strong> wants to access your Skola++ account.
         </Text>
         <Text variant="dimmed">
           It will be able to use:{" "}

@@ -49,7 +49,7 @@ export async function getClient(
   if (clientId === FIRST_PARTY_CLIENT)
     return {
       clientId,
-      name: "Skola",
+      name: "Skola++",
       redirectUris: [`${o}/oauth/callback`],
       firstParty: true,
     };

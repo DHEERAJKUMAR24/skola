@@ -11,7 +11,8 @@ export default function AuthGate({ onSkip }: { onSkip: () => void }) {
       align="center"
       style={{ maxWidth: 360, margin: "10vh auto", padding: "0 16px" }}
     >
-      <h1>Skola</h1>
+      <img src="/logo.svg" alt="" width={72} height={72} />
+      <h1>Skola++</h1>
       <Text variant="dimmed">Sign in to sync your cards across devices.</Text>
       <Button variant="primary" onClick={() => startLogin("login")}>
         Sign in

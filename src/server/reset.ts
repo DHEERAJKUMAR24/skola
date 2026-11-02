@@ -45,7 +45,7 @@ export async function requestReset(
   );
   await mailer({
     to: email,
-    subject: "Your Skola password reset code",
+    subject: "Your Skola++ password reset code",
     text: `Your code is ${otp}. It expires in 10 minutes. If you did not ask for this, ignore this email.`,
   });
 }

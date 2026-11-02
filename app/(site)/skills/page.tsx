@@ -8,7 +8,7 @@ import ConnectGuide from "./ConnectGuide";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
-  title: "Connect Skola to your AI assistant",
+  title: "Connect Skola++ to your AI assistant",
   description:
     "The Skola MCP server address, how to connect Claude, ChatGPT and other assistants, and how to install the Skola skill.",
 };
@@ -22,7 +22,7 @@ export default async function SkillsPage() {
   const names = skills.map((s) => s.name);
   return (
     <>
-      <h1>Connect Skola to your AI assistant</h1>
+      <h1>Connect Skola++ to your AI assistant</h1>
       <p>
         Skola can work with Claude, ChatGPT and other AI assistants. They read
         your decks, add and edit cards, and quiz you, using an agent skill that

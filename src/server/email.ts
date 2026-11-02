@@ -24,7 +24,7 @@ export const sendEmail: Mailer = async (mail) => {
       "content-type": "application/json",
     },
     body: JSON.stringify({
-      from: process.env.EMAIL_FROM ?? "Skola <onboarding@resend.dev>",
+      from: process.env.EMAIL_FROM ?? "Skola++ <onboarding@resend.dev>",
       to: mail.to,
       subject: mail.subject,
       text: mail.text,

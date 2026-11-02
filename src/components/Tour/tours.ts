@@ -18,7 +18,7 @@ export const TOURS: TourDef[] = [
     route: /^\/home$/,
     steps: [
       {
-        title: "Welcome to Skola",
+        title: "Welcome to Skola++",
         text: "Flashcards that remember for you. This short tour shows where things are. You can replay it any time from your profile menu.",
       },
       {

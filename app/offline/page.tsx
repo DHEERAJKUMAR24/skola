@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 export const dynamic = "force-static";
-export const metadata: Metadata = { title: "Offline | Skola" };
+export const metadata: Metadata = { title: "Offline | Skola++" };
 
 // Plain markup and inline styles on purpose: this page is precached and must render with nothing else.
 export default function OfflinePage() {
@@ -21,7 +21,7 @@ export default function OfflinePage() {
         offline, and changes sync when you are back online.
       </p>
       <p>
-        <a href="/">Open Skola</a>
+        <a href="/">Open Skola++</a>
       </p>
     </main>
   );
