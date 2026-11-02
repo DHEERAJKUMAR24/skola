@@ -21,6 +21,17 @@ const withSerwist = withSerwistInit({
 const nextConfig = {
   reactCompiler: true,
   env: { NEXT_PUBLIC_APP_VERSION: pkg.version },
+  // The FSRS optimizer (fsrs-browser WASM threads) needs SharedArrayBuffer, which browsers only
+  // allow on cross-origin isolated pages. `credentialless` keeps cross-origin pictures loading.
+  headers: async () => [
+    {
+      source: "/:path*",
+      headers: [
+        { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
+        { key: "Cross-Origin-Embedder-Policy", value: "credentialless" },
+      ],
+    },
+  ],
 };
 
 export default withSerwist(nextConfig);

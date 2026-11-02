@@ -11,8 +11,9 @@ export interface TrainingSet {
   ratings: Uint32Array;
   /** Study days since the previous review of the same card (0 for its first review or the same day). */
   deltas: Uint32Array;
-  /** Reviews per card, in the order the cards appear in `ratings`. */
+  /** Reviews in each training item, in the order the items appear in `ratings`. */
   lengths: Uint32Array;
+  /** Real reviews used (not the expanded item rows). */
   reviews: number;
   cards: number;
 }
@@ -44,28 +45,37 @@ export function buildTrainingSet(
   const ratings: number[] = [];
   const deltas: number[] = [];
   const lengths: number[] = [];
+  let reviews = 0;
   for (const list of byCard.values()) {
     list.sort((a, b) => a.reviewedAt - b.reviewedAt);
-    list.forEach((l, i) => {
-      ratings.push(l.rating);
-      deltas.push(
-        i === 0
-          ? 0
-          : Math.max(
-              0,
-              studyDay(l.reviewedAt, newDayStartHour) -
-                studyDay(list[i - 1].reviewedAt, newDayStartHour)
-            )
-      );
-    });
-    lengths.push(list.length);
+    const r = list.map((l) => l.rating);
+    const d = list.map((l, i) =>
+      i === 0
+        ? 0
+        : Math.max(
+            0,
+            studyDay(l.reviewedAt, newDayStartHour) -
+              studyDay(list[i - 1].reviewedAt, newDayStartHour)
+          )
+    );
+    reviews += list.length;
+    // The trainer wants one item per prefix of the history (reviews 1..k, k >= 2), and rejects
+    // an item whose reviews all fall on the same day.
+    let spaced = false;
+    for (let k = 2; k <= list.length; k++) {
+      spaced ||= d[k - 1] > 0;
+      if (!spaced) continue;
+      ratings.push(...r.slice(0, k));
+      deltas.push(...d.slice(0, k));
+      lengths.push(k);
+    }
   }
   return {
     ratings: Uint32Array.from(ratings),
     deltas: Uint32Array.from(deltas),
     lengths: Uint32Array.from(lengths),
-    reviews: ratings.length,
-    cards: lengths.length,
+    reviews,
+    cards: byCard.size,
   };
 }
 
@@ -90,6 +100,13 @@ export function optimizeWeights(
     return Promise.reject(
       new Error(
         `Needs at least ${MIN_OPTIMIZE_REVIEWS} reviews to train; you have ${set.reviews}.`
+      )
+    );
+
+  if (typeof crossOriginIsolated !== "undefined" && !crossOriginIsolated)
+    return Promise.reject(
+      new Error(
+        "This browser cannot run the optimizer here (it needs a cross-origin isolated page; try Chrome, Edge or Firefox)."
       )
     );
 

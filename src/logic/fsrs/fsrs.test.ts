@@ -34,16 +34,28 @@ describe("training set", () => {
       log("a", 0, Rating.Again, 2), // same day, 2 hours later
     ]);
     expect(set).toMatchObject({ reviews: 4, cards: 2 });
-    // cards appear in first-seen order: b first, then a
-    expect(Array.from(set.lengths)).toEqual([1, 3]);
+    // One item per history prefix. Card b has one review, so no item. For card a, the
+    // 2-review prefix is all same-day (rejected by the trainer); the 3-review one is kept.
+    expect(Array.from(set.lengths)).toEqual([3]);
     expect(Array.from(set.ratings)).toEqual([
-      Rating.Good,
       Rating.Good,
       Rating.Again,
       Rating.Hard,
     ]);
     // 14:00 on day 0 to 12:00 on day 3 is 3 study days, not 2.9
-    expect(Array.from(set.deltas)).toEqual([0, 0, 0, 3]);
+    expect(Array.from(set.deltas)).toEqual([0, 0, 3]);
+  });
+
+  it("expands every later review into its own prefix item", () => {
+    const set = buildTrainingSet([
+      log("a", 0, Rating.Good),
+      log("a", 2, Rating.Good),
+      log("a", 6, Rating.Hard),
+      log("a", 14, Rating.Good),
+    ]);
+    expect(set).toMatchObject({ reviews: 4, cards: 1 });
+    expect(Array.from(set.lengths)).toEqual([2, 3, 4]);
+    expect(Array.from(set.deltas)).toEqual([0, 2, 0, 2, 4, 0, 2, 4, 8]);
   });
 
   it("skips manual changes and invalid ratings", () => {

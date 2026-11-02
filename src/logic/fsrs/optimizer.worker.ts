@@ -1,5 +1,5 @@
 // Runs FSRS parameter training off the main thread. The WASM comes from `fsrs-browser`.
-import init, { Fsrs } from "fsrs-browser";
+import init, { Fsrs, initThreadPool } from "fsrs-browser";
 
 interface Request {
   ratings: Uint32Array;
@@ -13,6 +13,7 @@ self.onmessage = async (e: MessageEvent<Request>) => {
   const r = e.data;
   try {
     await init();
+    await initThreadPool(Math.min(4, navigator.hardwareConcurrency || 1));
     const fsrs = new Fsrs();
     const weights = fsrs.computeParameters(
       r.ratings,
