@@ -12,7 +12,8 @@ export async function POST(req: Request) {
   const o = origin(req);
   const db = getDb();
   const who = await authenticate(db, req, audiences(o).mcp);
-  if (!who || !who.scope.split(" ").includes("mcp")) return unauthorized(o);
+  if (!who || !who.scope.split(" ").includes("mcp"))
+    return unauthorized(o, "/mcp");
 
   const body = await req.json().catch(() => null);
   if (!body)

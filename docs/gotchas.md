@@ -21,4 +21,5 @@
 
 ## MCP and CORS
 - Browser MCP clients (Inspector, web apps) send `mcp-protocol-version`, `mcp-session-id` and `accept` after `initialize` and read `WWW-Authenticate` from the 401. `src/server/cors.ts` allows and exposes them, and `unauthorized()` carries the CORS headers. If sign-in works but tool discovery fails, check the preflight first. `mcpHttp.test.ts` covers it. The server is stateless (it never issues a session id).
+- ChatGPT "Authentication succeeded, action discovery failed" (2026-11-02): the 401 from `/mcp` pointed `resource_metadata` at the root metadata URL, which describes the `/api` resource. ChatGPT follows that URL, asks for a token for `/api`, gets one (scope `sync`), and `/mcp` then rejects it with 401. Fixed: `unauthorized(o, "/mcp")` points at `/.well-known/oauth-protected-resource/mcp`. A connection made before the fix holds `/api` tokens; delete the app in ChatGPT and connect again. To diagnose: `vercel logs requests --since 1h` (look for `POST /oauth/token` 200 followed by `POST /mcp` 401) and compare `aud` in `oauth_tokens`.
 

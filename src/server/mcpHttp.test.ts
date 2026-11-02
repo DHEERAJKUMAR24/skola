@@ -2,6 +2,7 @@
 import fs from "node:fs";
 import { PGlite } from "@electric-sql/pglite";
 import { beforeAll, expect, it, vi } from "vitest";
+import { GET as resourceMetadata } from "../../app/.well-known/oauth-protected-resource/[[...path]]/route";
 import { OPTIONS, POST } from "../../app/mcp/route";
 import type { Db } from "./db";
 import { handleRpc } from "./mcp";
@@ -38,7 +39,7 @@ it("401 keeps the discovery challenge and is readable cross-origin", async () =>
   );
   expect(res.status).toBe(401);
   expect(res.headers.get("www-authenticate")).toBe(
-    'Bearer resource_metadata="https://skola.example/.well-known/oauth-protected-resource"'
+    'Bearer resource_metadata="https://skola.example/.well-known/oauth-protected-resource/mcp"'
   );
   expect(res.headers.get("access-control-allow-origin")).toBe("*");
   const exposed = res.headers.get("access-control-expose-headers") ?? "";
@@ -85,4 +86,22 @@ it("is stateless: initialize, notification, list and ping need no session id", a
     id: 3,
     result: {},
   });
+});
+
+it("the 401 challenge leads to metadata for the mcp resource, so tokens get the mcp audience", async () => {
+  const res = await POST(
+    new Request("https://skola.example/mcp", { method: "POST", body: "{}" })
+  );
+  const url = /resource_metadata="([^"]+)"/.exec(
+    res.headers.get("www-authenticate") ?? ""
+  )?.[1] as string;
+  const path = new URL(url).pathname.replace(
+    "/.well-known/oauth-protected-resource",
+    ""
+  );
+  const meta = await resourceMetadata(new Request(url), {
+    params: Promise.resolve({ path: path.split("/").filter(Boolean) }),
+  }).then((r) => r.json());
+  expect(meta.resource).toBe("https://skola.example/mcp");
+  expect(meta.scopes_supported).toEqual(["mcp"]);
 });

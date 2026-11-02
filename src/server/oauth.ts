@@ -387,15 +387,19 @@ export async function authenticate(db: Db, req: Request, aud: string) {
   return m ? verifyAccessToken(db, m[1], aud) : null;
 }
 
-/** 401 body per RFC 9728 so clients can discover the authorization server. */
-export function unauthorized(o: string) {
+/**
+ * 401 body per RFC 9728 so clients can discover the authorization server. `resourcePath` names
+ * the protected resource ("/mcp"): clients ask for the token for the resource this URL describes,
+ * so the MCP endpoint must not point at the default (api) metadata or the token gets the wrong audience.
+ */
+export function unauthorized(o: string, resourcePath = "") {
   return Response.json(
     { error: "unauthorized" },
     {
       status: 401,
       headers: {
         ...CORS,
-        "WWW-Authenticate": `Bearer resource_metadata="${o}/.well-known/oauth-protected-resource"`,
+        "WWW-Authenticate": `Bearer resource_metadata="${o}/.well-known/oauth-protected-resource${resourcePath}"`,
       },
     }
   );
