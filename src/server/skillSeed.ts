@@ -73,7 +73,7 @@ Each card in a result has: id, deck, type, state, due, lapses, suspended, fields
 - multiple_choice: question, choices (a list of strings), correct (the 0-based position of the right choice, or a list of positions when several are right), optional explanation.
 - list: front (the question) and items (the steps or points to recall, as a list; a line may start with >>> or a bullet, which is removed), optional ordered (true when the order matters).
 
-- image_occlusion: a picture plus the areas to hide. Give the picture as image_url (an https link; Skola does not download it, the picture is shown straight from the link, so the link must stay online) or as image (a data URL or base64 text of a PNG, JPEG, WebP or GIF up to 15 MB, though one request is limited to about 4 MB on Vercel, so use image_url for big pictures; Skola stores it for the user, so it stays available). areas is a list of { x, y, w, h } as fractions of the picture, measured from its top left corner: x, y is the top left corner of the area and w, h its size, all between 0 and 1. Each area becomes its own card. Optional header, and hide_all (default true: every area is covered and one is asked; false: only the asked area is covered). Look at the picture yourself before choosing areas, and say what each area hides.
+- image_occlusion: a picture plus the areas to hide. For this type prefer the dedicated workflow below (upload_image_asset, then create_image_occlusion_cards); add_cards also takes image_asset_id, image_url or image (base64) with the same areas.
 
 **edit_card** – card_id plus the fields to change; fields you leave out are unchanged.
 - basic: front, back.
@@ -83,6 +83,15 @@ Each card in a result has: id, deck, type, state, due, lapses, suspended, fields
 - image_occlusion: header, hide_all, image or image_url (replaces the picture) and areas. An area with an id (listed in the card's fields) is moved or resized; an area without an id is new and gets a card. Areas you leave out stay as they are.
 - any card: tags (replaces the note's tag list) and suspended.
 Fields that do not belong to the card's type are refused with a message.
+
+**Image occlusion workflow** (use this for diagrams, maps and labelled pictures):
+1. get_capabilities (optional): formats, size limits and how pictures are stored.
+2. upload_image_asset with image_base64 (a data URL or base64 of a PNG, JPEG, WebP or GIF), or image (a file reference that has a download_url), or image_url (a public https link that Skola downloads). A file id with no download_url cannot be read: send base64 or a link instead. It returns image_asset_id, width and height in pixels. The same bytes give the same id, so repeating the call is safe. One request is limited to about 4 MB, so give bigger pictures as image_url.
+3. Look at the picture (get_image_asset with include_image true shows it) and decide which regions to hide. Areas are { x, y, w, h, label } as FRACTIONS of the picture from 0 to 1, measured from its top-left corner: x, y is the corner and w, h the size, so x+w and y+h are at most 1. Pixels divided by width or height gives the fraction, so a resized picture never moves an area. Put the name of the hidden thing in label.
+4. preview_image_occlusion with the same areas (optional): checks them, shows pixel positions, overlaps and a small SVG. It stores nothing.
+5. create_image_occlusion_cards with deck_id, image_asset_id, areas, header, hide_all (default true: every area is covered and one is asked; false: only the asked area is covered) and an idempotency_key you choose (for example "event-loop-v1"). Each area becomes exactly one card, and all cards are saved together or not at all. If a call times out, repeat it with the same key: you get the same cards, not duplicates. A key reused with different content is refused.
+6. get_card_image with a returned card_id: check that the picture is right and that active_area is the region you meant.
+Errors start with a code in brackets, for example [invalid_areas] area 2 leaves the picture, [asset_not_found], [image_too_large_for_inline], [invalid_image]. Read the text after the code: it says what to change.
 
 **get_card_image** – card_id of an image-occlusion card. Returns image_url, a link to the picture that you can open or render (a stored picture gets a link valid for an hour), plus header, hide_all, active_area (the area this card asks about) and every area as fractions of the picture. Call it before quizzing or editing such a card.
 

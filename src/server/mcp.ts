@@ -11,6 +11,7 @@ import {
   str,
   studyable,
 } from "./mcpData";
+import { OCCLUSION_TOOLS } from "./mcpOcclusion";
 import {
   RpcError,
   SKILL_TOOLS,
@@ -176,11 +177,17 @@ const READ_TOOLS: Tool[] = [
   },
 ];
 
-export const TOOLS: Tool[] = [...READ_TOOLS, ...SKILL_TOOLS, ...WRITE_TOOLS];
+export const TOOLS: Tool[] = [
+  ...READ_TOOLS,
+  ...SKILL_TOOLS,
+  ...WRITE_TOOLS,
+  ...OCCLUSION_TOOLS,
+];
 
 const VERSIONS = ["2025-06-18", "2025-03-26", "2024-11-05"];
 
 interface RpcRequest {
+  jsonrpc?: string;
   id?: string | number | null;
   method?: string;
   params?: Record<string, any>;
@@ -190,7 +197,9 @@ interface RpcRequest {
 export async function handleRpc(
   db: Db,
   userId: string,
-  msg: RpcRequest
+  msg: RpcRequest,
+  /** Public origin; when given, the server advertises its icon from it. */
+  base?: string
 ): Promise<object | null> {
   if (msg.id === undefined) return null;
   const ok = (result: unknown) => ({ jsonrpc: "2.0", id: msg.id, result });
@@ -206,7 +215,26 @@ export async function handleRpc(
       return ok({
         protocolVersion: VERSIONS.includes(asked) ? asked : VERSIONS[0],
         capabilities: { tools: {}, resources: {}, prompts: {} },
-        serverInfo: { name: "skola", version: "0.1.0" },
+        // `name` stays "skola": clients and installed skills key on it. `title` is what people see.
+        serverInfo: {
+          name: "skola",
+          title: "Skola++",
+          version: "0.1.0",
+          ...(base && {
+            icons: [
+              {
+                src: `${base}/logo512.png`,
+                mimeType: "image/png",
+                sizes: ["512x512"],
+              },
+              {
+                src: `${base}/logo.svg`,
+                mimeType: "image/svg+xml",
+                sizes: ["any"],
+              },
+            ],
+          }),
+        },
         instructions: await serverInstructions(db, userId),
       });
     }
@@ -215,10 +243,11 @@ export async function handleRpc(
     case "tools/list":
       return ok({
         tools: TOOLS.map(
-          ({ name, description, inputSchema, write, destructive }) => ({
+          ({ name, description, inputSchema, write, destructive, meta }) => ({
             name,
             description,
             inputSchema,
+            ...(meta ? { _meta: meta } : {}),
             annotations: write
               ? { readOnlyHint: false, destructiveHint: !!destructive }
               : { readOnlyHint: true },

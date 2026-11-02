@@ -11,6 +11,7 @@ import {
   cleanChoices,
   validateMultipleChoice,
 } from "../logic/type-implementations/multiple-choice/types";
+import { loadAsset, noteImageFor, readImageSource } from "./imageAssets";
 import type { Ctx } from "./mcpData";
 import {
   MAX_IMAGE_BYTES,
@@ -142,12 +143,21 @@ function parseAreas(
  * is set up and are referenced as `media:<sha256>`, otherwise they stay inside the note.
  */
 async function pictureOf(item: Item, ctx: Ctx): Promise<string | undefined> {
-  if (typeof item.image === "string" && item.image.trim()) {
-    const stored = mediaEnabled();
-    const bytes = parseImageInput(
-      item.image,
-      stored ? MAX_MEDIA_BYTES : MAX_IMAGE_BYTES
-    );
+  if (item.image_asset_id !== undefined)
+    return (await noteImageFor(ctx, await loadAsset(ctx, item.image_asset_id)))
+      .image;
+  const stored = mediaEnabled();
+  const limit = stored ? MAX_MEDIA_BYTES : MAX_IMAGE_BYTES;
+  const raw =
+    typeof item.image === "string" ? item.image.trim() : item.image_base64;
+  if (typeof raw === "string" && raw.trim()) {
+    const bytes = parseImageInput(raw, limit);
+    if (!stored) return toDataUrl(bytes);
+    return `media:${await storeBytes(ctx.db, ctx.userId, bytes)}`;
+  }
+  // A file reference from an AI client ({ download_url, ... }): Skola downloads and stores it.
+  if (item.image && typeof item.image === "object") {
+    const bytes = await readImageSource({ image: item.image }, limit);
     if (!stored) return toDataUrl(bytes);
     return `media:${await storeBytes(ctx.db, ctx.userId, bytes)}`;
   }

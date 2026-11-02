@@ -20,6 +20,8 @@ export interface Tool {
   write?: boolean;
   /** Deletes or overwrites data the user may want back. */
   destructive?: boolean;
+  /** Client hints sent in tools/list as `_meta` (for example ChatGPT's `openai/fileParams`). */
+  meta?: Record<string, unknown>;
   run: (ctx: Ctx, a: Args) => Promise<unknown>;
 }
 

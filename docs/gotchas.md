@@ -23,3 +23,9 @@
 - Browser MCP clients (Inspector, web apps) send `mcp-protocol-version`, `mcp-session-id` and `accept` after `initialize` and read `WWW-Authenticate` from the 401. `src/server/cors.ts` allows and exposes them, and `unauthorized()` carries the CORS headers. If sign-in works but tool discovery fails, check the preflight first. `mcpHttp.test.ts` covers it. The server is stateless (it never issues a session id).
 - ChatGPT "Authentication succeeded, action discovery failed" (2026-11-02): the 401 from `/mcp` pointed `resource_metadata` at the root metadata URL, which describes the `/api` resource. ChatGPT follows that URL, asks for a token for `/api`, gets one (scope `sync`), and `/mcp` then rejects it with 401. Fixed: `unauthorized(o, "/mcp")` points at `/.well-known/oauth-protected-resource/mcp`. A connection made before the fix holds `/api` tokens; delete the app in ChatGPT and connect again. To diagnose: `vercel logs requests --since 1h` (look for `POST /oauth/token` 200 followed by `POST /mcp` 401) and compare `aud` in `oauth_tokens`.
 
+## Image occlusion over MCP
+- A ChatGPT file reference is an object (`download_url`, `file_id`), not bytes. Skola only downloads `download_url`; a bare `file_id` cannot be read and gives `[unsupported_image_reference]`.
+- Without R2 keys a card keeps the picture inline, so it is capped at 400 KB (`[image_too_large_for_inline]`). Uploaded assets (up to 8 MB) are only the staging copy in `mcp_image_assets`; the card copies the bytes (to R2 or inline).
+- `idempotency_key` makes the note and card ids deterministic (hash of user, key, part) and stores a request hash in `note.mcpRequest`. Same key with other content gives `[idempotency_conflict]`.
+- Coordinates are fractions, so resizing a picture can never shift an area; do not add a pixel mode.
+

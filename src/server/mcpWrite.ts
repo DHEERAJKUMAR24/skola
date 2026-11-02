@@ -111,7 +111,7 @@ const add_cards: Tool = {
 - cloze: text with hidden parts written {{c1::answer}}; each number c1, c2, ... becomes its own card.
 - multiple_choice: question, choices (list of strings), correct (0-based position or list of positions), optional explanation.
 - list: front (the question) and items (the steps or points to recall, as a list; lines may start with >>> or a bullet), optional ordered (true when the order matters).
-- image_occlusion: a picture plus the areas to hide. Give the picture as image_url (an https link; Skola does not download it, it is shown straight from the link, so the link must stay reachable) or as image (a data URL or base64 text of a PNG, JPEG, WebP or GIF; it is stored for you, up to 15 MB (but a single request is limited to about 4 MB on Vercel, so send big pictures as image_url), or 400 KB if picture storage is not set up). areas is a list of { x, y, w, h } as fractions of the picture from its top left corner (x, y is the corner, w, h the size, all between 0 and 1). Each area becomes its own card. Optional header, and hide_all (default true: every area is covered and one is asked; false: only the asked area is covered).`,
+- image_occlusion: a picture plus the areas to hide. For several cards from one picture, or to place areas carefully, prefer the tools upload_image_asset and create_image_occlusion_cards; this form also takes image_asset_id. Give the picture as image_asset_id (from upload_image_asset), or image_url (an https link; Skola does not download it, it is shown straight from the link, so the link must stay reachable) or as image (a data URL or base64 text of a PNG, JPEG, WebP or GIF; it is stored for you, up to 15 MB (but a single request is limited to about 4 MB on Vercel, so send big pictures as image_url), or 400 KB if picture storage is not set up). areas is a list of { x, y, w, h } as fractions of the picture from its top left corner (x, y is the corner, w, h the size, all between 0 and 1). Each area becomes its own card. Optional header, and hide_all (default true: every area is covered and one is asked; false: only the asked area is covered).`,
   inputSchema: {
     type: "object",
     properties: {
@@ -138,6 +138,7 @@ const add_cards: Tool = {
             ordered: { type: "boolean" },
             image: { type: "string" },
             image_url: { type: "string" },
+            image_asset_id: { type: "string" },
             header: { type: "string" },
             hide_all: { type: "boolean" },
             areas: {

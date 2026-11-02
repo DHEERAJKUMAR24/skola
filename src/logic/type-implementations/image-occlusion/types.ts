@@ -6,6 +6,8 @@ export interface OcclusionBox {
   y: number;
   w: number;
   h: number;
+  /** Optional name of what is hidden (set over MCP); not shown in the editor. */
+  label?: string;
 }
 
 export interface ImageOcclusionNoteContent {
