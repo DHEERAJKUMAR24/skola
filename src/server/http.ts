@@ -1,11 +1,5 @@
+import { CORS } from "./cors";
 import { OAuthError } from "./oauth";
-
-/** Public OAuth endpoints use PKCE and no cookies, so any origin may call them. */
-const CORS = {
-  "access-control-allow-origin": "*",
-  "access-control-allow-headers": "content-type, authorization",
-  "access-control-allow-methods": "GET, POST, OPTIONS",
-};
 
 export const preflight = () =>
   new Response(null, { status: 204, headers: CORS });

@@ -1,4 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
+import { CORS } from "./cors";
 import { randomToken, safeEqual, sha256 } from "./crypto";
 import type { Db } from "./db";
 
@@ -393,6 +394,7 @@ export function unauthorized(o: string) {
     {
       status: 401,
       headers: {
+        ...CORS,
         "WWW-Authenticate": `Bearer resource_metadata="${o}/.well-known/oauth-protected-resource"`,
       },
     }
