@@ -21,6 +21,7 @@ import {
   readResource,
   serverInstructions,
 } from "./mcpSkills";
+import { STUDY_TOOLS } from "./mcpStudy";
 import { WRITE_TOOLS } from "./mcpWrite";
 
 // ts-fsrs State enum values.
@@ -182,6 +183,7 @@ export const TOOLS: Tool[] = [
   ...SKILL_TOOLS,
   ...WRITE_TOOLS,
   ...OCCLUSION_TOOLS,
+  ...STUDY_TOOLS,
 ];
 
 const VERSIONS = ["2025-06-18", "2025-03-26", "2024-11-05"];

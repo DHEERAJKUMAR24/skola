@@ -372,13 +372,21 @@ const grade_card: Tool = {
     required: ["card_id", "rating"],
   },
   async run(ctx, a) {
-    const rating = Number(a.rating);
+    return gradeCard(ctx, str(a, "card_id") ?? "", Number(a.rating));
+  },
+};
+
+/** Schedules one answer like the app. `logId` makes the review log row id deterministic (study sessions). */
+export async function gradeCard(
+  ctx: Ctx,
+  cardId: string,
+  rating: number,
+  logId: string = randomUUID()
+) {
+  {
     if (![1, 2, 3, 4].includes(rating))
       throw new Error("rating must be 1 to 4");
-    const raw = need(
-      await one(ctx, "cards", str(a, "card_id") ?? ""),
-      "card not found"
-    );
+    const raw = need(await one(ctx, "cards", cardId), "card not found");
     const card = decode(raw) as Row;
     const now = new Date(ctx.now);
     if (card.suspended) throw new Error("card is suspended");
@@ -419,7 +427,6 @@ const grade_card: Tool = {
 
     const next: Row = { ...card, model: chosen.card };
     const rows: WriteRow[] = [];
-    const logId = randomUUID();
     rows.push({
       tbl: "reviewLogs",
       id: logId,
@@ -473,8 +480,8 @@ const grade_card: Tool = {
       lapses: chosen.card.lapses,
       leech,
     };
-  },
-};
+  }
+}
 
 export const WRITE_TOOLS: Tool[] = [
   create_deck,
