@@ -91,6 +91,48 @@ export const TOURS: TourDef[] = [
     ],
   },
   {
+    id: "ai-settings",
+    route: /^\/settings\/ai$/,
+    steps: [
+      {
+        el: ".ai-settings .textarea",
+        title: "Instructions for AI assistants",
+        text: "Write how you want your cards and quizzes to be. Every assistant connected to Skola reads this at the start of a session. It syncs across your devices.",
+      },
+      {
+        title: "Hover the (i) icons",
+        text: "They explain what is saved, what assistants may do with it, and where to edit full skills.",
+      },
+    ],
+  },
+  {
+    id: "connect",
+    route: /^\/settings\/connect$/,
+    steps: [
+      {
+        el: ".skills-card",
+        title: "Connect an assistant",
+        text: "Copy this address into Claude, ChatGPT or any assistant that supports MCP. The steps for each one are below, with copy buttons.",
+      },
+      {
+        el: "#default-skills",
+        title: "Default skills",
+        text: "Skills teach an assistant how to write good cards, quiz you honestly and tidy decks. Open one to read its files. AI agents read the same content at /skills/llm.txt.",
+      },
+    ],
+  },
+  {
+    id: "skills-editor",
+    route: /^\/settings\/skills$/,
+    steps: [
+      {
+        el: ".skills-editor, .skills-page, .settings-view__content",
+        title: "Your own skills",
+        text: "Write your own playbooks for assistants, or copy a default one and change it. Your skill replaces a default of the same name for you only, and every save keeps a history you can restore.",
+      },
+    ],
+  },
+  {
     id: "presets",
     route: /^\/settings\/presets$/,
     steps: [

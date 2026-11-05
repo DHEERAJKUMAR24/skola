@@ -11,6 +11,8 @@ export const metadata: Metadata = {
   title: "Connect Skola++ to your AI assistant",
   description:
     "The Skola MCP server address, how to connect Claude, ChatGPT and other assistants, and how to install the Skola skill.",
+  // Tells crawlers and agents where the plain-text version of this page is.
+  alternates: { types: { "text/plain": "/skills/llm.txt" } },
 };
 
 /** The one page that explains how to connect an assistant and install the skills. */
@@ -29,6 +31,14 @@ export default async function SkillsPage() {
         teaches them to write good flashcards and to quiz you honestly. This
         page has the server address, the steps for each assistant, and the skill
         downloads. Everything you need to paste has a Copy button.
+      </p>
+      <p>
+        <strong>AI agents:</strong> this page as one plain-text file, with the
+        full text of every skill, is at{" "}
+        <a href="/skills/llm.txt">/skills/llm.txt</a>. Signed-in users can also
+        manage all of this inside the app:{" "}
+        <a href="/#/settings/connect">Settings, Connect</a> and{" "}
+        <a href="/#/settings/skills">Settings, Skills</a>.
       </p>
 
       <ConnectGuide
@@ -51,7 +61,8 @@ export default async function SkillsPage() {
         </ul>
         <p>
           Open a skill to read its files and copy any of them. Your own skills
-          are managed in the <Link href="/skills/edit">editor</Link>.
+          are managed in the app, in{" "}
+          <a href="/#/settings/skills">Settings, Skills</a>.
         </p>
       </section>
     </>

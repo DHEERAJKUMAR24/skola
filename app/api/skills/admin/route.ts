@@ -1,6 +1,6 @@
 import { currentUserId } from "@/server/auth";
 import { getDb } from "@/server/db";
-import { origin } from "@/server/oauth";
+import { audiences, authenticate, origin } from "@/server/oauth";
 import {
   DEFAULT_OWNER,
   SkillError,
@@ -17,18 +17,25 @@ import { getUserEmail } from "@/server/users";
 export const dynamic = "force-dynamic";
 
 /**
- * The skill editor's backend. It uses the signed-in cookie session, not an OAuth token:
- * users manage their own skills here, and admins can switch to the shared defaults.
+ * The skill editor's backend (Settings, Skills in the app). The app sends its own sign-in token;
+ * a browser that only has the login cookie still works, but then the request must come from this
+ * site. Users manage their own skills here, and admins can switch to the shared defaults.
  */
 export async function POST(req: Request) {
-  if (req.headers.get("origin") !== origin(req))
-    return Response.json({ error: "Bad origin" }, { status: 403 });
-  const userId = await currentUserId();
+  const db = getDb();
+  let userId: string | null = null;
+  if (req.headers.get("authorization")) {
+    userId =
+      (await authenticate(db, req, audiences(origin(req)).api))?.userId ?? null;
+  } else {
+    if (req.headers.get("origin") !== origin(req))
+      return Response.json({ error: "Bad origin" }, { status: 403 });
+    userId = await currentUserId();
+  }
   if (!userId)
     return Response.json({ error: "Sign in first" }, { status: 401 });
 
   const b = (await req.json().catch(() => null)) ?? {};
-  const db = getDb();
   const admin = isSkillAdmin(await getUserEmail(db, userId));
   const scope = b.scope === "default" ? "default" : "mine";
   if (scope === "default" && !admin)

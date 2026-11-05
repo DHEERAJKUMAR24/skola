@@ -26,7 +26,7 @@ const router = createHashRouter(
           element: <HomeView />,
         },
         {
-          path: "/settings/:section?",
+          path: "/settings/:section?/:item?",
           element: <SettingsView />,
         },
         {

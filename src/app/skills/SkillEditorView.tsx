@@ -1,6 +1,13 @@
-"use client";
-
+import { LabelWithTip } from "@/components/InfoTip/InfoTip";
+import { Alert } from "@/components/ui/Alert";
+import { Button } from "@/components/ui/Button";
+import { Stack } from "@/components/ui/Stack";
+import { Text } from "@/components/ui/Text";
+import { TextInput } from "@/components/ui/TextInput";
+import { Textarea } from "@/components/ui/Textarea";
+import { NotSignedIn, authFetch, startLogin, useAuthEmail } from "@/logic/auth";
 import { useCallback, useEffect, useState } from "react";
+import "./Skills.css";
 
 interface Listing {
   admin: boolean;
@@ -14,7 +21,7 @@ interface Version {
 }
 
 async function api(body: object) {
-  const res = await fetch("/api/skills/admin", {
+  const res = await authFetch("/api/skills/admin", {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify(body),
@@ -27,23 +34,31 @@ async function api(body: object) {
 const TEMPLATE = (name: string) =>
   `---\nname: ${name}\ndescription: Say when the assistant should use this skill and what it does.\n---\n\n# ${name}\n\nInstructions go here.\n`;
 
-export default function Editor() {
+/** Your own skills (and, for admins, the shared defaults): create, edit, history, restore. */
+export default function SkillEditorView() {
+  const email = useAuthEmail();
   const [scope, setScope] = useState<"mine" | "default">("mine");
   const [list, setList] = useState<Listing | null>(null);
   const [sel, setSel] = useState<{ skill: string; path: string } | null>(null);
   const [text, setText] = useState("");
+  const [saved, setSaved] = useState("");
   const [versions, setVersions] = useState<Version[] | null>(null);
   const [newName, setNewName] = useState("");
   const [newPath, setNewPath] = useState("");
   const [msg, setMsg] = useState<{ error: boolean; text: string } | null>(null);
 
-  const say = (text: string, error = false) => setMsg({ text, error });
+  const say = (t: string, error = false) => setMsg({ text: t, error });
   const run = useCallback(async (fn: () => Promise<unknown>, ok?: string) => {
     try {
       await fn();
       if (ok) say(ok);
     } catch (e) {
-      say((e as Error).message, true);
+      say(
+        e instanceof NotSignedIn
+          ? "Your sign-in expired. Sign in again."
+          : (e as Error).message,
+        true
+      );
     }
   }, []);
 
@@ -52,17 +67,33 @@ export default function Editor() {
     [run, scope]
   );
   useEffect(() => {
+    if (!email) return;
     setSel(null);
     setText("");
+    setSaved("");
     setVersions(null);
     void refresh();
-  }, [refresh]);
+  }, [refresh, email]);
+
+  if (!email)
+    return (
+      <Stack gap="md" align="start">
+        <Text>
+          Sign in to write your own skills. They are stored in your account, and
+          your assistants read them over the connection.
+        </Text>
+        <Button variant="primary" onClick={() => startLogin("login")}>
+          Sign in
+        </Button>
+      </Stack>
+    );
 
   const open = (skill: string, path: string) =>
     run(async () => {
       const d = await api({ op: "get", scope, skill, path });
       setSel({ skill, path });
       setText(d.content);
+      setSaved(d.content);
       setVersions(null);
     });
 
@@ -72,89 +103,97 @@ export default function Editor() {
       await refresh();
       setSel({ skill, path });
       setText(content);
+      setSaved(content);
     }, "Saved. Assistants see it on their next read.");
 
+  const dirty = sel !== null && text !== saved;
+
   return (
-    <div>
+    <Stack gap="md" className="skills-page">
       {list?.admin && (
-        <p>
-          <button
-            type="button"
-            disabled={scope === "mine"}
+        <div className="skills-row">
+          <Button
+            size="sm"
+            variant={scope === "mine" ? "primary" : "default"}
             onClick={() => setScope("mine")}
           >
             My skills
-          </button>{" "}
-          <button
-            type="button"
-            disabled={scope === "default"}
+          </Button>
+          <Button
+            size="sm"
+            variant={scope === "default" ? "primary" : "default"}
             onClick={() => setScope("default")}
           >
             Default skills (admin)
-          </button>
-        </p>
+          </Button>
+        </div>
       )}
-      <p>
+      <Text variant="dimmed">
         {scope === "default"
           ? "These are the shared defaults everyone gets unless they have their own skill of the same name."
           : "These are your own skills. A skill of yours replaces a default of the same name for you only. Delete it to go back to the default."}
-      </p>
+      </Text>
       {msg && (
-        <output
-          style={{ display: "block", color: msg.error ? "crimson" : "inherit" }}
-        >
-          {msg.text}
-        </output>
+        <Alert variant={msg.error ? "error" : "success"}>{msg.text}</Alert>
       )}
 
-      <div style={{ display: "flex", gap: 24, flexWrap: "wrap" }}>
-        <div style={{ minWidth: 220 }}>
-          {list?.skills.length === 0 && <p>No skills yet.</p>}
+      <div className="skills-editor">
+        <div className="skills-editor__list">
+          {list?.skills.length === 0 && (
+            <Text variant="dimmed">No skills yet.</Text>
+          )}
           {list?.skills.map((s) => (
-            <div key={s.name} style={{ marginBottom: 12 }}>
+            <div key={s.name} className="skills-editor__skill">
               <strong>{s.name}</strong>
-              <ul style={{ margin: "4px 0", paddingLeft: 18 }}>
+              <ul>
                 {s.files.map((f) => (
                   <li key={f.path}>
                     <button
                       type="button"
+                      className={`skills-editor__file${
+                        sel?.skill === s.name && sel.path === f.path
+                          ? " skills-editor__file--active"
+                          : ""
+                      }`}
                       onClick={() => open(s.name, f.path)}
-                      style={{
-                        fontWeight:
-                          sel?.skill === s.name && sel.path === f.path
-                            ? 700
-                            : 400,
-                      }}
                     >
                       {f.path}
                     </button>
                   </li>
                 ))}
               </ul>
-              <button
-                type="button"
+              <Button
+                size="xs"
+                variant="destructive"
                 onClick={() => {
                   if (confirm(`Delete the whole skill "${s.name}"?`))
                     void run(async () => {
                       await api({ op: "deleteSkill", scope, skill: s.name });
                       setSel(null);
                       setText("");
+                      setSaved("");
                       await refresh();
                     }, "Deleted. You can restore files from history.");
                 }}
               >
                 Delete skill
-              </button>
+              </Button>
             </div>
           ))}
-          <h3>New skill</h3>
-          <input
+
+          <TextInput
+            label={
+              <LabelWithTip tip="Lowercase letters, numbers and single hyphens. Use the name of a default skill (for example skola) to replace it for you only.">
+                New skill
+              </LabelWithTip>
+            }
             placeholder="skill-name"
             value={newName}
-            onChange={(e) => setNewName(e.target.value.toLowerCase())}
-          />{" "}
-          <button
-            type="button"
+            onChange={(e) => setNewName(e.currentTarget.value.toLowerCase())}
+          />
+          <Button
+            size="sm"
+            variant="primary"
             disabled={!newName}
             onClick={() => {
               void save(newName, "SKILL.md", TEMPLATE(newName)).then(() =>
@@ -163,17 +202,17 @@ export default function Editor() {
             }}
           >
             Create
-          </button>
+          </Button>
           {sel && (
             <>
-              <h3>New file in {sel.skill}</h3>
-              <input
+              <TextInput
+                label={`New file in ${sel.skill}`}
                 placeholder="references/notes.md"
                 value={newPath}
-                onChange={(e) => setNewPath(e.target.value)}
-              />{" "}
-              <button
-                type="button"
+                onChange={(e) => setNewPath(e.currentTarget.value)}
+              />
+              <Button
+                size="sm"
                 disabled={!newPath}
                 onClick={() => {
                   void save(sel.skill, newPath, "# Notes\n").then(() =>
@@ -181,40 +220,35 @@ export default function Editor() {
                   );
                 }}
               >
-                Add
-              </button>
+                Add file
+              </Button>
             </>
           )}
         </div>
 
-        <div style={{ flex: 1, minWidth: 300 }}>
+        <div className="skills-editor__main">
           {sel ? (
             <>
-              <p>
-                <code>
-                  {sel.skill}/{sel.path}
-                </code>
-              </p>
-              <textarea
+              <Text weight="semibold">
+                {sel.skill}/{sel.path}
+                {dirty ? " (unsaved changes)" : ""}
+              </Text>
+              <Textarea
                 value={text}
-                onChange={(e) => setText(e.target.value)}
+                onChange={(e) => setText(e.currentTarget.value)}
                 spellCheck={false}
-                style={{
-                  width: "100%",
-                  minHeight: 420,
-                  fontFamily: "monospace",
-                  fontSize: 13,
-                }}
+                minRows={22}
+                className="skills-editor__text"
               />
-              <p>
-                <button
-                  type="button"
+              <div className="skills-row">
+                <Button
+                  variant="primary"
+                  disabled={!dirty}
                   onClick={() => save(sel.skill, sel.path, text)}
                 >
                   Save
-                </button>{" "}
-                <button
-                  type="button"
+                </Button>
+                <Button
                   onClick={() =>
                     run(async () =>
                       setVersions(
@@ -231,10 +265,10 @@ export default function Editor() {
                   }
                 >
                   History
-                </button>{" "}
+                </Button>
                 {sel.path !== "SKILL.md" && (
-                  <button
-                    type="button"
+                  <Button
+                    variant="destructive"
                     onClick={() => {
                       if (confirm(`Delete ${sel.path}?`))
                         void run(async () => {
@@ -246,30 +280,30 @@ export default function Editor() {
                           });
                           setSel(null);
                           setText("");
+                          setSaved("");
                           await refresh();
                         }, "Deleted.");
                     }}
                   >
                     Delete file
-                  </button>
+                  </Button>
                 )}
-              </p>
+              </div>
               {versions && (
-                <>
-                  <h3>Earlier versions</h3>
-                  {versions.length === 0 && <p>No earlier versions.</p>}
-                  <ul>
+                <div>
+                  <Text weight="semibold">Earlier versions</Text>
+                  {versions.length === 0 && (
+                    <Text variant="dimmed">No earlier versions.</Text>
+                  )}
+                  <ul className="skills-editor__versions">
                     {versions.map((v) => (
                       <li key={v.id}>
-                        {new Date(v.savedAt).toLocaleString()}{" "}
-                        <button
-                          type="button"
-                          onClick={() => setText(v.content)}
-                        >
+                        {new Date(v.savedAt).toLocaleString()}
+                        <Button size="xs" onClick={() => setText(v.content)}>
                           Load into editor
-                        </button>{" "}
-                        <button
-                          type="button"
+                        </Button>
+                        <Button
+                          size="xs"
                           onClick={() =>
                             run(async () => {
                               await api({
@@ -284,18 +318,18 @@ export default function Editor() {
                           }
                         >
                           Restore
-                        </button>
+                        </Button>
                       </li>
                     ))}
                   </ul>
-                </>
+                </div>
               )}
             </>
           ) : (
-            <p>Pick a file to edit.</p>
+            <Text variant="dimmed">Pick a file to edit.</Text>
           )}
         </div>
       </div>
-    </div>
+    </Stack>
   );
 }

@@ -165,7 +165,7 @@ export function ProfileMenu({ variant, minimal = false }: ProfileMenuProps) {
       </MenuItem>
       <MenuItem
         leftSection={<IconPlugConnected size={16} />}
-        onClick={pick(() => window.open("/skills", "_blank", "noopener"))}
+        onClick={pick(() => navigate("/settings/connect"))}
       >
         Connect an AI assistant
       </MenuItem>
