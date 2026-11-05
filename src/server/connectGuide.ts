@@ -167,6 +167,8 @@ export function connectGuide(o: string, skills: string[]): GuideSection[] {
         code(`${o}/llms.txt`),
         text("The skills as plain text:"),
         code(`${o}/llms-skill.txt`),
+        text("The guide and every default skill in one file:"),
+        code(`${o}/skills/llm.txt`),
       ],
     },
   ];

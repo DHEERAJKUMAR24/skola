@@ -4,10 +4,12 @@ import { PGlite } from "@electric-sql/pglite";
 import { beforeAll, expect, it } from "vitest";
 import type { Db } from "./db";
 import { handleRpc } from "./mcp";
-import { productText, skillText } from "./skillText";
+import { SEED_SKILLS } from "./skillSeed";
+import { allText, productText, skillText } from "./skillText";
 import {
   DEFAULT_OWNER,
   MAX_FILES,
+  MAX_FILE_BYTES,
   deleteSkill,
   effectiveFiles,
   etagOf,
@@ -15,6 +17,9 @@ import {
   parseFrontmatter,
   resetSeedFlag,
   saveFile,
+  validatePath,
+  validateSkillMd,
+  validateSkillName,
 } from "./skills";
 import { crc32, zip } from "./zip";
 
@@ -60,11 +65,12 @@ const call = async (user: string, name: string, args: object = {}) => {
 
 it("seeds the default skill once and exposes it to everyone", async () => {
   const list = await call("alice", "get_skill");
-  expect(list).toHaveLength(1);
-  expect(list[0]).toMatchObject({ name: "skola", source: "default" });
-  expect(list[0].files).toContain("references/quizzing.md");
+  expect(list.map((x: any) => x.name)).toEqual(Object.keys(SEED_SKILLS).sort());
+  const core = list.find((x: any) => x.name === "skola");
+  expect(core).toMatchObject({ name: "skola", source: "default" });
+  expect(core.files).toContain("references/quizzing.md");
   resetSeedFlag();
-  expect(await call("bob", "get_skill")).toHaveLength(1); // no duplicate seed
+  expect(await call("bob", "get_skill")).toHaveLength(list.length); // no duplicate seed
   const md = await call("alice", "get_skill", { name: "skola" });
   expect(parseFrontmatter(md)).toMatchObject({ name: "skola" });
 });
@@ -78,10 +84,10 @@ it("lets a user create, read, update and delete their own skill, privately", asy
     })
   ).toEqual({ created: "my-notes" });
   const mine = (await call("alice", "get_skill")).map((s: any) => s.name);
-  expect(mine).toEqual(["my-notes", "skola"]);
-  expect((await call("bob", "get_skill")).map((s: any) => s.name)).toEqual([
-    "skola",
-  ]);
+  expect(mine).toEqual(["my-notes", ...Object.keys(SEED_SKILLS).sort()]);
+  expect(
+    (await call("bob", "get_skill")).map((s: any) => s.name)
+  ).not.toContain("my-notes");
   expect(await call("bob", "get_skill", { name: "my-notes" })).toHaveProperty(
     "error"
   );
@@ -112,9 +118,9 @@ it("lets a user create, read, update and delete their own skill, privately", asy
   expect(await call("alice", "delete_skill", { name: "my-notes" })).toEqual({
     deleted: "my-notes",
   });
-  expect((await call("alice", "get_skill")).map((s: any) => s.name)).toEqual([
-    "skola",
-  ]);
+  expect((await call("alice", "get_skill")).map((s: any) => s.name)).toEqual(
+    Object.keys(SEED_SKILLS).sort()
+  );
 });
 
 it("customises a default by copying it; deleting the copy resets to the default", async () => {
@@ -126,8 +132,9 @@ it("customises a default by copying it; deleting the copy resets to the default"
   await call("alice", "update_skill_file", { name: "skola", content: edited });
 
   const aliceView = await call("alice", "get_skill");
-  expect(aliceView[0]).toMatchObject({ name: "skola", source: "custom" });
-  expect(aliceView[0].files).toContain("references/tools.md"); // copied along
+  const mineView = aliceView.find((x: any) => x.name === "skola");
+  expect(mineView).toMatchObject({ name: "skola", source: "custom" });
+  expect(mineView.files).toContain("references/tools.md"); // copied along
   expect(await call("alice", "get_skill", { name: "skola" })).toContain(
     "My own rules"
   );
@@ -140,7 +147,10 @@ it("customises a default by copying it; deleting the copy resets to the default"
   expect(await call("alice", "get_skill", { name: "skola" })).toContain(
     "Rules that protect the user"
   );
-  expect((await call("alice", "get_skill"))[0].source).toBe("default");
+  expect(
+    (await call("alice", "get_skill")).find((x: any) => x.name === "skola")
+      .source
+  ).toBe("default");
 });
 
 it("rejects bad names, headers, paths and oversize input", async () => {
@@ -272,15 +282,17 @@ it("serves skills as MCP instructions, resources and prompts", async () => {
   const idx = await rpc("alice", "resources/read", {
     uri: "skill://index.json",
   });
-  expect(JSON.parse(idx.result.contents[0].text).skills[0].name).toBe("skola");
+  expect(
+    JSON.parse(idx.result.contents[0].text).skills.map((x: any) => x.name)
+  ).toContain("skola");
   expect(
     (await rpc("alice", "resources/read", { uri: "skill://nope/SKILL.md" }))
       .error.code
   ).toBe(-32002);
 
-  expect((await rpc("alice", "prompts/list")).result.prompts[0].name).toBe(
-    "skola"
-  );
+  expect(
+    (await rpc("alice", "prompts/list")).result.prompts.map((x: any) => x.name)
+  ).toContain("skola");
   const prompt = await rpc("alice", "prompts/get", { name: "skola" });
   expect(prompt.result.messages[0].content.text).toContain("name: skola");
   expect((await rpc("alice", "prompts/get", { name: "nope" })).error.code).toBe(
@@ -333,13 +345,66 @@ it("serves /llms.txt about the product and /llms-skill.txt about the skills, lin
 });
 
 it("does not bring the built-in skill back after the defaults were deleted", async () => {
-  await deleteSkill(db, DEFAULT_OWNER, "skola", "boss");
+  for (const name of Object.keys(SEED_SKILLS))
+    await deleteSkill(db, DEFAULT_OWNER, name, "boss");
   resetSeedFlag();
   expect(await ownerFiles(db, DEFAULT_OWNER)).toHaveLength(0);
   // Only alice's own private skill is left; no default came back.
   expect(
     (await effectiveFiles(db, "alice")).every((f) => f.skill === "private-one")
   ).toBe(true);
+});
+
+it("adds a built-in skill that never existed in a table already in use, without touching edits", async () => {
+  const pg = new PGlite();
+  await pg.exec(migrate("20261101000000_init.sql"));
+  await pg.exec(migrate("20261102000000_skills.sql"));
+  const d: Db = {
+    query: (text, params) => pg.query(text, params) as never,
+    transaction: (fn) =>
+      pg.transaction((tx) =>
+        fn((text, params) => tx.query(text, params) as never)
+      ),
+  };
+  // An older release only had the core skill, and an admin edited it.
+  await pg.query(
+    "INSERT INTO skill_files (owner, skill, path, content, updated_at) VALUES ('', 'skola', 'SKILL.md', $1, 1)",
+    ["---\nname: skola\ndescription: edited\n---\nmine"]
+  );
+  resetSeedFlag();
+  const files = await ownerFiles(d, DEFAULT_OWNER);
+  const names = [...new Set(files.map((f) => f.skill))].sort();
+  expect(names).toEqual(Object.keys(SEED_SKILLS).sort());
+  expect(
+    files.find((f) => f.skill === "skola" && f.path === "SKILL.md")?.content
+  ).toContain("mine");
+  expect(
+    files.some((f) => f.skill === "skola" && f.path.includes("tools"))
+  ).toBe(false);
+});
+
+it("serves everything in one file for AI agents: guide first, then every skill in full", async () => {
+  const o = "https://skola.example";
+  const text = await allText(db, o);
+  expect(text.startsWith("# Skola")).toBe(true);
+  expect(text).toContain(`${o}/skills/llm.txt`);
+  expect(text).toContain("# Skola agent skills");
+  expect(text.indexOf("# Skola agent skills")).toBeGreaterThan(
+    text.indexOf("## Links")
+  );
+  // the guide and the skills text are the same blocks as the separate files
+  expect(text).toContain((await skillText(db, o)).trim().slice(0, 200));
+});
+
+it("every built-in skill passes the same validation as a user's own", () => {
+  for (const [name, files] of Object.entries(SEED_SKILLS)) {
+    validateSkillName(name);
+    validateSkillMd(name, files["SKILL.md"]);
+    for (const [path, content] of Object.entries(files)) {
+      validatePath(path);
+      expect(Buffer.byteLength(content)).toBeLessThan(MAX_FILE_BYTES);
+    }
+  }
 });
 
 it("etags change with content, and the zip is structurally valid", () => {

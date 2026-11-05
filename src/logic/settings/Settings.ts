@@ -18,6 +18,8 @@ export interface SettingsValues {
   "#showShortcutHints": boolean;
   /** Ids of the guided tours already shown. Synced, so a tour is not repeated on a new device. */
   "#toursSeen": string[];
+  /** Standing instructions for AI assistants; the MCP server hands them to every session. Synced. */
+  "#aiInstructions"?: string;
 
   "#colorSchemePreference": "light" | "dark" | "auto";
   "#densityPreference": "relaxed" | "compact" | "auto";

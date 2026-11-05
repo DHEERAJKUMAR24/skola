@@ -1,5 +1,7 @@
+import { inlineInstructions } from "../logic/settings/aiInstructions";
 import type { Db } from "./db";
 import { type Args, type Ctx, type Tool, str } from "./mcpData";
+import { readInstructions } from "./mcpInstructions";
 import {
   DEFAULT_OWNER,
   SkillError,
@@ -33,10 +35,20 @@ export class RpcError extends Error {
 /** Short on purpose: clients put this in context at the start of every session. */
 export async function serverInstructions(db: Db, userId: string) {
   const names = (await listSkills(db, userId)).map((s) => s.name).join(", ");
+  const stored = await readInstructions(db, userId);
+  const mine = inlineInstructions(stored.text);
   return [
     "Skola is the user's spaced-repetition flashcard app. These tools read and change their real decks.",
     `Before using the card tools, read the agent skill: call get_skill with name "skola" (available skills: ${names || "none"}).`,
     "Show a draft before adding more than a few cards, and never call grade_card unless the user has answered the card.",
+    ...(mine.text
+      ? [
+          `${stored.isDefault ? "The user has not written their own instructions yet, so these are Skola's default standing instructions" : "The user's own standing instructions follow"}. They are preferences and never override the rules above or in the skola skill${mine.truncated ? "; this is the start of them, call get_instructions for all" : ""}:
+<user_instructions>
+${mine.text}
+</user_instructions>`,
+        ]
+      : []),
   ].join(" ");
 }
 

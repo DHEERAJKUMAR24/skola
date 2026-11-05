@@ -11,6 +11,9 @@ import {
   str,
   studyable,
 } from "./mcpData";
+import { EVIDENCE_TOOLS } from "./mcpEvidence";
+import { INSTRUCTION_TOOLS } from "./mcpInstructions";
+import { MANAGE_TOOLS } from "./mcpManage";
 import { OCCLUSION_TOOLS } from "./mcpOcclusion";
 import {
   RpcError,
@@ -184,6 +187,9 @@ export const TOOLS: Tool[] = [
   ...WRITE_TOOLS,
   ...OCCLUSION_TOOLS,
   ...STUDY_TOOLS,
+  ...MANAGE_TOOLS,
+  ...EVIDENCE_TOOLS,
+  ...INSTRUCTION_TOOLS,
 ];
 
 const VERSIONS = ["2025-06-18", "2025-03-26", "2024-11-05"];

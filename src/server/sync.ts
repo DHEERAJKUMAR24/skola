@@ -1,4 +1,5 @@
 import type { Db } from "./db";
+import { APP_COALESCE_MS, recordNoteVersion } from "./noteHistory";
 
 export interface PushRow {
   tbl: string;
@@ -34,12 +35,28 @@ export function validateRows(rows: unknown): PushRow[] | null {
 }
 
 /** Applies rows that are strictly newer than stored ones; returns the user's latest seq and how many rows were applied. */
-export async function pushRows(db: Db, userId: string, rows: PushRow[]) {
+export async function pushRows(
+  db: Db,
+  userId: string,
+  rows: PushRow[],
+  opts: { coalesceMs?: number } = {}
+) {
   return db.transaction(async (q) => {
     // Serialises pushes per user so seq order matches commit order; otherwise a puller could skip a row.
     await q("SELECT pg_advisory_xact_lock(hashtext($1))", [userId]);
     let applied = 0;
+    const now = Date.now();
     for (const r of rows) {
+      if (r.tbl === "notes" && !r.deleted)
+        await recordNoteVersion(
+          q,
+          userId,
+          r.id,
+          r.data as Record<string, any> | null,
+          r.updatedAt,
+          now,
+          opts.coalesceMs ?? APP_COALESCE_MS
+        );
       const res = await q(
         `INSERT INTO changes (user_id, tbl, id, data, updated_at, deleted, seq)
          VALUES ($1, $2, $3, $4::jsonb, $5, $6,

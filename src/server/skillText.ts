@@ -33,11 +33,28 @@ export function productText(o: string, skills: string[]) {
     `- [Protected resource metadata](${o}/.well-known/oauth-protected-resource/mcp): RFC 9728 discovery for the OAuth flow`,
     `- [Authorization server metadata](${o}/.well-known/oauth-authorization-server): OAuth 2.1 with PKCE (S256), dynamic client registration, opaque tokens bound to one audience`,
     `- [Connect and install guide for people](${o}/skills): this content with copy buttons`,
+    `- [Everything in one file](${o}/skills/llm.txt): this guide and the full text of every default skill`,
     `- [Agent skills (llms-skill.txt)](${o}/llms-skill.txt): the skill index and the full text of every default skill`,
     "",
     "## Optional",
     "",
     "- Skola is licensed AGPL-3.0; a publicly run modified version must publish its source.",
+    "",
+  ].join("\n");
+}
+
+/**
+ * /skills/llm.txt: everything an AI agent needs in one fetch. The product overview with the
+ * connect and install guide first, then the full text of every default skill.
+ */
+export async function allText(db: Db, o: string) {
+  const skills = (await listSkills(db, null)).map((s) => s.name);
+  return [
+    productText(o, skills).trimEnd(),
+    "",
+    "---",
+    "",
+    (await skillText(db, o)).trimEnd(),
     "",
   ].join("\n");
 }

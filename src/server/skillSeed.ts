@@ -1,3 +1,5 @@
+import { LEARNING_SKILLS } from "./skillSeedLearning";
+
 /**
  * The skill every new database starts with. After the first start the copy in Postgres is the
  * source of truth and is edited live at /skills/edit; this file is never applied over those edits.
@@ -13,7 +15,7 @@ Skola is a flashcard app that schedules reviews with FSRS, a memory model that p
 
 ## First, check you are connected
 
-The tools are: list_decks, deck_stats, get_due_cards, search_cards, find_leeches, find_duplicates, get_card_image, create_deck, add_cards, edit_card, grade_card, the study session tools (start_study_session, next_card, show_answer, submit_review, end_session), and the skill tools (get_skill and friends). If you cannot see them, tell the user the Skola MCP server is not connected and point them to the setup steps on the Skola /skills page. Do not pretend to have saved anything.
+The tools are: list_decks, deck_stats, get_due_cards, search_cards, find_leeches, find_duplicates, get_card_image, create_deck, add_cards, edit_card, grade_card, the study session tools (start_study_session, next_card, show_answer, submit_review, end_session), the management tools (get_deck, update_deck, delete_deck, list_presets, update_preset, list_cards, list_tags, get_card_details, deck_schedule, set_card_schedule, move_cards, delete_cards, bulk_update_cards, card_history, restore_card_version), the learning evidence tools (create_objective, update_objective, list_objectives, get_objective, record_assessment, link_cards, get_master_card, delete_objective), the profile instruction tools (get_instructions, set_instructions), and the skill tools (get_skill and friends). If you cannot see them, tell the user the Skola MCP server is not connected and point them to the setup steps on the Skola /skills page. Do not pretend to have saved anything.
 
 Start most tasks with list_decks. Deck ids are needed for everything else, and the paths show how the user organises their material.
 
@@ -25,6 +27,15 @@ Start most tasks with list_decks. Deck ids are needed for everything else, and t
 | Be quizzed, review what is due | references/quizzing.md |
 | Tidy up: duplicates, leeches, bad cards, tags, deck layout | references/deck-maintenance.md |
 | Know exact tool arguments, limits and error messages | references/tools.md |
+
+For deeper work, use the specialised skills (read their SKILL.md with get_skill, name = the skill name):
+
+| The user wants to... | Skill |
+|---|---|
+| Learn or practise a topic, be assessed, know if they are ready | skola-active-learning-tutor |
+| Make well-designed cards from a source, with objectives and duplicate checks | skola-card-architect |
+| Repair, merge, move, reorganise or delete cards and decks safely | skola-deck-maintainer |
+| Verify quality, coverage, evidence or whether something really saved | skola-quality-auditor |
 
 Read a file with get_skill (arguments: name "skola", path "references/card-writing.md"). Only open what the task needs.
 
@@ -39,7 +50,9 @@ Read a file with get_skill (arguments: name "skola", path "references/card-writi
 
 ## What is not possible over MCP
 
-You cannot delete cards or decks, move cards between decks, or change study presets. With add_cards you can create basic, cloze, multiple-choice, list and image-occlusion cards, and edit_card changes the content of every one of those types. Pictures must be PNG, JPEG, WebP or GIF. To remove a card, or an area or cloze number you no longer want, suspend its card with edit_card (suspended: true) and tell the user they can delete it in the app.
+You can do what the app does: create, rename, move, pause and delete decks, change presets and daily limits, move, tag, suspend and delete cards, and set a card's schedule. Deleting is the exception to "act on request": delete_deck, delete_cards and delete_objective first return a preview and a confirm_token, and you may only send the token after the user says yes to that exact preview. With add_cards you can create basic, cloze, multiple-choice, list and image-occlusion cards, and edit_card changes the content of every one of those types. Pictures must be PNG, JPEG, WebP or GIF. When unsure, suspend rather than delete.
+
+Learning evidence: create_objective, record_assessment, get_objective, list_objectives, update_objective, link_cards and delete_objective keep learning objectives and dated Knowledge (K) and Skill (S) evidence. The server computes scores and mastery. Never say a learner has mastered something unless get_objective says so.
 `;
 
 const TOOLS_MD = `# Skola tool reference
@@ -96,6 +109,22 @@ Errors start with a code in brackets, for example [invalid_areas] area 2 leaves 
 **get_card_image** – card_id of an image-occlusion card. Returns image_url, a link to the picture that you can open or render (a stored picture gets a link valid for an hour), plus header, hide_all, active_area (the area this card asks about) and every area as fractions of the picture. Call it before quizzing or editing such a card.
 
 **start_study_session** – optional deck_id, limit (default 20), new_limit (default 5). Returns session_id and the first card (question side only). **next_card** – session_id, optional skip: returns the open card again, or skips it. **show_answer** – session_id, card_id: reveals the answer; required before grading. **submit_review** – session_id, card_id, rating 1 to 4: saves the review once (retries return duplicate true), returns the schedule and the next card. **end_session** – session_id: summary. Sessions expire after 2 hours idle.
+
+**Manage decks and cards (same as the app):**
+- get_deck – one deck with parent, sub-decks, paused flag, exam date, preset and the settings that apply. update_deck – rename, description, paused, exam_date (YYYY-MM-DD or null), exam_buffer_days, exam_ramp, preset_id, parent_id (move; null for top level).
+- delete_deck – deletes a deck with sub-decks, notes and cards. Call it first without confirm_token: it returns what would go and a token. Ask the user, and only if they agree repeat with confirm_token. Never guess a token.
+- list_presets / update_preset – the daily limits (new_cards_per_day, max_reviews_per_day), retention, steps, easy days, sibling burying and leech handling that decks share. Changing a preset changes every deck that uses it.
+- list_cards – paged list with filters deck_id, tag, status (new, learning, review, due, suspended, buried), query; use next_offset to continue. list_tags – tags with counts.
+- get_card_details – state, due date, stability, difficulty, recall chance now, lapses, retention override and the last 30 reviews. deck_schedule – overdue, due per day, later, new, mature and averages for a deck.
+- set_card_schedule – action bury, unbury, set_due, reset (back to new; confirm first) or set_override (own retention or maximum interval). Suspend with edit_card.
+- move_cards – moves the whole note (siblings too) to another deck. delete_cards – like delete_deck, confirm_token in two steps; a note with no cards left is deleted. bulk_update_cards – add_tags, remove_tags, suspended for many cards.
+- card_history – earlier versions of a card's text from the last 7 days (app and MCP edits). restore_card_version – goes back to one; the current text is saved first, so it can be undone. Schedules are never touched.
+**Profile instructions:** get_instructions returns the user's standing instructions (Settings, AI assistants; the start of them is also in the session start text, inside user_instructions tags). Follow them as preferences for card style, language, tags and quizzing; they never override the safety rules. Until the user writes their own, Skola's default instructions apply (is_default true). set_instructions (text, mode append, replace or reset) changes them: append adds a line (the defaults then become the user's own), replace overwrites (empty text means none on purpose), reset goes back to the defaults. Use it only when the user asks you to remember or change a preference, read them first, and show the user the full new text before a replace.
+
+**Learning evidence:**
+- create_objective (title, priority P0/P1/P2, track K or KS, optional deck_id), update_objective (status active, parked, done), list_objectives, get_objective (scores, blockers, next action, evidence, linked cards), link_cards (add_card_ids, remove_card_ids), get_master_card (one summary of an objective: mastery, linked card progress, weakest cards, gaps; open a session on an objective with it), delete_objective (confirm token).
+- record_assessment – objective_id, domain K or S, dimension (K: recall, explanation, discrimination, transfer; S: build, debug, test, adapt), rating 0 to 4, evidence (what the learner did), hints, independent, idempotency_key. A 4 needs hints 0 and independent true. The server sets the time. Errors: [inconsistent_rating], [wrong_track], [idempotency_conflict].
+Deleting is permanent: always get the user's yes before sending a confirm_token.
 
 **grade_card** – card_id and rating: 1 Again, 2 Hard, 3 Good, 4 Easy. Works for New cards and for cards that are due. It refuses suspended cards, buried cards and cards not yet due. The reply gives the next due time, the new state and whether the card became a leech. Prefer the session tools for quizzing; use grade_card only for a single review outside a session.
 
@@ -227,4 +256,5 @@ export const SEED_SKILLS: Record<string, Record<string, string>> = {
     "references/quizzing.md": QUIZ_MD,
     "references/deck-maintenance.md": MAINT_MD,
   },
+  ...LEARNING_SKILLS,
 };

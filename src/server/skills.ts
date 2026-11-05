@@ -95,20 +95,32 @@ let seeded = false;
 export async function ensureSeed(db: Db) {
   if (seeded) return;
   // History counts too: an admin who deleted every default must not get the built-in one back.
-  const { rows } = await db.query<{ n: number }>(
-    "SELECT (SELECT COUNT(*) FROM skill_files WHERE owner = $1) + (SELECT COUNT(*) FROM skill_history WHERE owner = $1) AS n",
+  const { rows } = await db.query<{ files: number; hist: number }>(
+    "SELECT (SELECT COUNT(*) FROM skill_files WHERE owner = $1) AS files, (SELECT COUNT(*) FROM skill_history WHERE owner = $1) AS hist",
     [DEFAULT_OWNER]
   );
-  if (Number(rows[0].n) === 0) {
-    const now = Date.now();
-    for (const [skill, files] of Object.entries(SEED_SKILLS))
-      for (const [path, content] of Object.entries(files))
+  const files = Number(rows[0].files);
+  const hist = Number(rows[0].hist);
+  const now = Date.now();
+  // Empty table: seed everything. Table in use: add only built-in skills that never existed here
+  // (new releases), so edits are never overwritten and a skill an admin deleted does not return.
+  // No files but some history: an admin removed every default, so seed nothing.
+  if (files > 0 || hist === 0)
+    for (const [skill, skillFiles] of Object.entries(SEED_SKILLS)) {
+      if (files > 0) {
+        const { rows: seen } = await db.query<{ n: number }>(
+          "SELECT (SELECT COUNT(*) FROM skill_files WHERE owner = $1 AND skill = $2) + (SELECT COUNT(*) FROM skill_history WHERE owner = $1 AND skill = $2) AS n",
+          [DEFAULT_OWNER, skill]
+        );
+        if (Number(seen[0].n) > 0) continue;
+      }
+      for (const [path, content] of Object.entries(skillFiles))
         await db.query(
           `INSERT INTO skill_files (owner, skill, path, content, updated_at, updated_by)
            VALUES ($1, $2, $3, $4, $5, 'seed') ON CONFLICT DO NOTHING`,
           [DEFAULT_OWNER, skill, path, content, now]
         );
-  }
+    }
   seeded = true;
 }
 

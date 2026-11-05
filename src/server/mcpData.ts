@@ -162,6 +162,8 @@ export interface WriteRow {
   data: Row;
   /** Review logs are keyed by `reviewedAt` on the wire, other tables by `updatedAt`. */
   at?: number;
+  /** Tombstone: devices remove the row on their next pull. */
+  deleted?: boolean;
 }
 
 /**
@@ -184,8 +186,17 @@ export async function putRows(ctx: Ctx, rows: WriteRow[]) {
     const updatedAt =
       r.at ?? Math.max(ctx.now, (prev.get(`${r.tbl}/${r.id}`) ?? 0) + 1);
     const data = r.tbl === "reviewLogs" ? r.data : { ...r.data, updatedAt };
-    return { tbl: r.tbl, id: r.id, data: encode(data), updatedAt };
+    return {
+      tbl: r.tbl,
+      id: r.id,
+      data: encode(data),
+      updatedAt,
+      ...(r.deleted ? { deleted: true } : {}),
+    };
   });
-  const { applied } = await pushRows(ctx.db, ctx.userId, wire);
+  // No burst merging for MCP edits: every change is its own undo step.
+  const { applied } = await pushRows(ctx.db, ctx.userId, wire, {
+    coalesceMs: 0,
+  });
   if (applied !== wire.length) throw new Error("A concurrent write won; retry");
 }
