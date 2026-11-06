@@ -374,7 +374,7 @@
   flex-wrap: wrap;
 }
 
-/* Graph view */
+/* ── Graph view ─────────────────────────────────────────────────── */
 .master-graph {
   width: 100%;
   max-width: 1400px;
@@ -403,21 +403,21 @@
   width: 10px;
   height: 10px;
   border-radius: 50%;
-  background: var(--theme-neutral-500);
+  background: #60a5fa;
 }
 
 .master-graph__dot--master {
-  background: var(--theme-primary-500);
+  background: #4ade80;
 }
 
 .master-graph__line {
   display: inline-block;
   width: 18px;
-  border-top: 2px solid var(--theme-neutral-400);
+  border-top: 1.5px solid rgba(100, 116, 139, 0.6);
 }
 
 .master-graph__line--entry {
-  border-top: 2px dashed var(--theme-primary-500);
+  border-top: 2px solid #7c3aed;
 }
 
 .master-graph__body {
@@ -427,67 +427,86 @@
   align-items: start;
 }
 
-.master-graph__svg {
-  width: 100%;
+/* Sigma canvas container + visual overlays */
+.master-graph__canvas-wrap {
+  position: relative;
   aspect-ratio: 1000 / 640;
-  border: 1px solid var(--theme-neutral-200);
+  min-height: 300px;
   border-radius: var(--radius-md, 8px);
-  background: var(--theme-neutral-50);
-  touch-action: none;
-  cursor: grab;
-  user-select: none;
+  overflow: hidden;
+  background: #0d1117;
 }
 
-.master-graph__edge {
-  stroke: var(--theme-neutral-400);
-  stroke-width: 1;
-  vector-effect: non-scaling-stroke;
+/* Sigma mounts its WebGL + label canvases here */
+.master-graph__canvas {
+  width: 100%;
+  height: 100%;
 }
 
-.master-graph__edge--entry {
-  stroke: var(--theme-primary-500);
-  stroke-dasharray: 5 3;
-}
-
-.master-graph__edge--hot {
-  stroke-width: 2.5;
-}
-
-.master-graph__node {
-  cursor: pointer;
-}
-
-.master-graph__node circle {
-  fill: var(--theme-neutral-500);
-  stroke: var(--theme-neutral-50);
-  stroke-width: 1.5;
-}
-
-.master-graph__node--master circle {
-  fill: var(--theme-primary-500);
-}
-
-.master-graph__node.is-outside circle {
-  fill-opacity: 0.55;
-  stroke-dasharray: 3 2;
-  stroke: var(--theme-neutral-600);
-}
-
-.master-graph__node.is-selected circle {
-  stroke: var(--theme-neutral-950);
-  stroke-width: 3;
-}
-
-.master-graph__node.is-dim {
-  opacity: 0.3;
-}
-
-.master-graph__node text {
-  font-size: 11px;
-  fill: var(--theme-neutral-800);
+/* Dot-grid background pattern + radial vignette, non-interactive */
+.master-graph__overlay {
+  position: absolute;
+  inset: 0;
   pointer-events: none;
+  /* Dot grid */
+  background-image: radial-gradient(
+    circle,
+    rgba(255, 255, 255, 0.07) 1px,
+    transparent 1px
+  );
+  background-size: 40px 40px;
+  /* Vignette on top of the grid */
+  -webkit-mask-image: radial-gradient(
+    ellipse 100% 100% at 50% 50%,
+    black 40%,
+    transparent 100%
+  );
+  mask-image: radial-gradient(
+    ellipse 100% 100% at 50% 50%,
+    black 40%,
+    transparent 100%
+  );
 }
 
+/* Alternative vignette via pseudo-element (keeps grid visible) */
+.master-graph__overlay::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    ellipse at 50% 50%,
+    transparent 40%,
+    rgba(0, 0, 0, 0.6) 100%
+  );
+}
+
+/* Pulsing ring rendered as a positioned div over sigma's canvas */
+.master-graph__ring {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(255, 255, 255, 0.7);
+  pointer-events: none;
+  animation: graph-pulse 1.8s ease-out infinite;
+}
+
+@keyframes graph-pulse {
+  0% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 0;
+  }
+  8% {
+    opacity: 0.65;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(3.2);
+    opacity: 0;
+  }
+}
+
+/* Panel */
 .master-graph__panel {
   display: flex;
   flex-direction: column;

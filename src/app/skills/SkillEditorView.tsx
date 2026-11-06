@@ -12,7 +12,12 @@ import "./Skills.css";
 interface Listing {
   admin: boolean;
   scope: "mine" | "default";
-  skills: { name: string; files: { path: string; updatedAt: number }[] }[];
+  skills: {
+    name: string;
+    source: "default" | "custom";
+    overridesDefault: boolean;
+    files: { path: string; updatedAt: number }[];
+  }[];
 }
 interface Version {
   id: number;
@@ -39,7 +44,11 @@ export default function SkillEditorView() {
   const email = useAuthEmail();
   const [scope, setScope] = useState<"mine" | "default">("mine");
   const [list, setList] = useState<Listing | null>(null);
-  const [sel, setSel] = useState<{ skill: string; path: string } | null>(null);
+  const [sel, setSel] = useState<{
+    skill: string;
+    path: string;
+    source: "default" | "custom";
+  } | null>(null);
   const [text, setText] = useState("");
   const [saved, setSaved] = useState("");
   const [versions, setVersions] = useState<Version[] | null>(null);
@@ -88,10 +97,10 @@ export default function SkillEditorView() {
       </Stack>
     );
 
-  const open = (skill: string, path: string) =>
+  const open = (skill: string, path: string, source: "default" | "custom") =>
     run(async () => {
       const d = await api({ op: "get", scope, skill, path });
-      setSel({ skill, path });
+      setSel({ skill, path, source });
       setText(d.content);
       setSaved(d.content);
       setVersions(null);
@@ -101,12 +110,12 @@ export default function SkillEditorView() {
     run(async () => {
       await api({ op: "save", scope, skill, path, content });
       await refresh();
-      setSel({ skill, path });
+      setSel({ skill, path, source: "custom" });
       setText(content);
       setSaved(content);
     }, "Saved. Assistants see it on their next read.");
 
-  const dirty = sel !== null && text !== saved;
+  const dirty = sel !== null && sel.source === "custom" && text !== saved;
 
   return (
     <Stack gap="md" className="skills-page">
@@ -139,12 +148,14 @@ export default function SkillEditorView() {
 
       <div className="skills-editor">
         <div className="skills-editor__list">
-          {list?.skills.length === 0 && (
-            <Text variant="dimmed">No skills yet.</Text>
-          )}
           {list?.skills.map((s) => (
             <div key={s.name} className="skills-editor__skill">
-              <strong>{s.name}</strong>
+              <div className="skills-row">
+                <strong>{s.name}</strong>
+                {s.source === "default" && (
+                  <span className="skills-badge">default</span>
+                )}
+              </div>
               <ul>
                 {s.files.map((f) => (
                   <li key={f.path}>
@@ -155,29 +166,41 @@ export default function SkillEditorView() {
                           ? " skills-editor__file--active"
                           : ""
                       }`}
-                      onClick={() => open(s.name, f.path)}
+                      onClick={() => open(s.name, f.path, s.source)}
                     >
                       {f.path}
                     </button>
                   </li>
                 ))}
               </ul>
-              <Button
-                size="xs"
-                variant="destructive"
-                onClick={() => {
-                  if (confirm(`Delete the whole skill "${s.name}"?`))
-                    void run(async () => {
-                      await api({ op: "deleteSkill", scope, skill: s.name });
-                      setSel(null);
-                      setText("");
-                      setSaved("");
-                      await refresh();
-                    }, "Deleted. You can restore files from history.");
-                }}
-              >
-                Delete skill
-              </Button>
+              {s.source === "custom" && (
+                <Button
+                  size="xs"
+                  variant="destructive"
+                  onClick={() => {
+                    const msg = s.overridesDefault
+                      ? `Remove your override of "${s.name}" and restore the default?`
+                      : `Delete the whole skill "${s.name}"?`;
+                    if (confirm(msg))
+                      void run(
+                        async () => {
+                          await api({
+                            op: "deleteSkill",
+                            scope,
+                            skill: s.name,
+                          });
+                          setSel(null);
+                          setText("");
+                          setSaved("");
+                          await refresh();
+                        },
+                        s.overridesDefault ? "Restored to default." : "Deleted."
+                      );
+                  }}
+                >
+                  {s.overridesDefault ? "Restore default" : "Delete skill"}
+                </Button>
+              )}
             </div>
           ))}
 
@@ -203,7 +226,7 @@ export default function SkillEditorView() {
           >
             Create
           </Button>
-          {sel && (
+          {sel?.source === "custom" && (
             <>
               <TextInput
                 label={`New file in ${sel.skill}`}
@@ -231,64 +254,73 @@ export default function SkillEditorView() {
             <>
               <Text weight="semibold">
                 {sel.skill}/{sel.path}
-                {dirty ? " (unsaved changes)" : ""}
+                {sel.source === "default"
+                  ? " (read-only — create a skill with this name to override)"
+                  : dirty
+                    ? " (unsaved changes)"
+                    : ""}
               </Text>
               <Textarea
                 value={text}
-                onChange={(e) => setText(e.currentTarget.value)}
+                onChange={(e) =>
+                  sel.source === "custom" && setText(e.currentTarget.value)
+                }
+                readOnly={sel.source === "default"}
                 spellCheck={false}
                 minRows={22}
                 className="skills-editor__text"
               />
-              <div className="skills-row">
-                <Button
-                  variant="primary"
-                  disabled={!dirty}
-                  onClick={() => save(sel.skill, sel.path, text)}
-                >
-                  Save
-                </Button>
-                <Button
-                  onClick={() =>
-                    run(async () =>
-                      setVersions(
-                        (
-                          await api({
-                            op: "history",
-                            scope,
-                            skill: sel.skill,
-                            path: sel.path,
-                          })
-                        ).versions
-                      )
-                    )
-                  }
-                >
-                  History
-                </Button>
-                {sel.path !== "SKILL.md" && (
+              {sel.source === "custom" && (
+                <div className="skills-row">
                   <Button
-                    variant="destructive"
-                    onClick={() => {
-                      if (confirm(`Delete ${sel.path}?`))
-                        void run(async () => {
-                          await api({
-                            op: "deleteFile",
-                            scope,
-                            skill: sel.skill,
-                            path: sel.path,
-                          });
-                          setSel(null);
-                          setText("");
-                          setSaved("");
-                          await refresh();
-                        }, "Deleted.");
-                    }}
+                    variant="primary"
+                    disabled={!dirty}
+                    onClick={() => save(sel.skill, sel.path, text)}
                   >
-                    Delete file
+                    Save
                   </Button>
-                )}
-              </div>
+                  <Button
+                    onClick={() =>
+                      run(async () =>
+                        setVersions(
+                          (
+                            await api({
+                              op: "history",
+                              scope,
+                              skill: sel.skill,
+                              path: sel.path,
+                            })
+                          ).versions
+                        )
+                      )
+                    }
+                  >
+                    History
+                  </Button>
+                  {sel.path !== "SKILL.md" && (
+                    <Button
+                      variant="destructive"
+                      onClick={() => {
+                        if (confirm(`Delete ${sel.path}?`))
+                          void run(async () => {
+                            await api({
+                              op: "deleteFile",
+                              scope,
+                              skill: sel.skill,
+                              path: sel.path,
+                            });
+                            setSel(null);
+                            setText("");
+                            setSaved("");
+                            await refresh();
+                          }, "Deleted.");
+                      }}
+                    >
+                      Delete file
+                    </Button>
+                  )}
+                </div>
+              )}
               {versions && (
                 <div>
                   <Text weight="semibold">Earlier versions</Text>
@@ -313,7 +345,7 @@ export default function SkillEditorView() {
                                 path: sel.path,
                                 versionId: v.id,
                               });
-                              await open(sel.skill, sel.path);
+                              await open(sel.skill, sel.path, sel.source);
                             }, "Restored.")
                           }
                         >

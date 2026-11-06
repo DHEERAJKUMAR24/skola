@@ -315,6 +315,139 @@ export function toWorld(view: View, p: Point): Point {
   return { x: (p.x - view.x) / view.k, y: (p.y - view.y) / view.k };
 }
 
+// --- Incremental simulation for animated settling ---
+
+export interface Simulation {
+  /** Run `steps` ticks. Returns current alpha; 0 means settled. */
+  tick(steps?: number): number;
+  /** Current positions centred on (0, 0). */
+  positions(): Map<string, Point>;
+}
+
+/**
+ * Incremental force-directed simulation. Same physics as forceLayout but runs one step at a time
+ * so the view can animate positions converging via requestAnimationFrame. Velocity accumulates
+ * across ticks for momentum; alpha decays exponentially and settles when velocity is negligible.
+ */
+export function createSimulation(
+  nodes: { id: string }[],
+  edges: { source: string; target: string }[],
+  opts: LayoutOptions = {}
+): Simulation {
+  const n = nodes.length;
+  if (n === 0) return { tick: () => 0, positions: () => new Map() };
+
+  const rand = mulberry32(opts.seed ?? 1);
+  const K = opts.linkDistance ?? 70;
+  const REP = opts.repulsion ?? 2400;
+  const GR = opts.gravity ?? 0.02;
+
+  const px = new Float64Array(n);
+  const py = new Float64Array(n);
+  const vx = new Float64Array(n);
+  const vy = new Float64Array(n);
+
+  const idx = new Map(nodes.map((nd, i) => [nd.id, i] as const));
+  nodes.forEach((nd, i) => {
+    const start = opts.initial?.get(nd.id);
+    if (start) {
+      px[i] = start.x;
+      py[i] = start.y;
+    } else {
+      const r = K * Math.sqrt(i + 1) * 0.6;
+      const a = i * 2.399963 + rand() * 0.3;
+      px[i] = r * Math.cos(a);
+      py[i] = r * Math.sin(a);
+    }
+  });
+
+  const springs = edges.flatMap((e) => {
+    const a = idx.get(e.source);
+    const b = idx.get(e.target);
+    return a !== undefined && b !== undefined && a !== b
+      ? [[a, b] as const]
+      : [];
+  });
+
+  let alpha = 1.0;
+
+  return {
+    tick(steps = 1) {
+      for (let s = 0; s < steps; s++) {
+        if (alpha < 0.001) return 0;
+        alpha *= 0.95;
+
+        const fx = new Float64Array(n);
+        const fy = new Float64Array(n);
+
+        for (let i = 0; i < n; i++) {
+          for (let j = i + 1; j < n; j++) {
+            let ex = px[i] - px[j];
+            let ey = py[i] - py[j];
+            let d2 = ex * ex + ey * ey;
+            if (d2 < 0.01) {
+              ex = rand() - 0.5;
+              ey = rand() - 0.5;
+              d2 = ex * ex + ey * ey + 0.01;
+            }
+            const f = REP / d2;
+            const d = Math.sqrt(d2);
+            fx[i] += (ex / d) * f;
+            fy[i] += (ey / d) * f;
+            fx[j] -= (ex / d) * f;
+            fy[j] -= (ey / d) * f;
+          }
+        }
+
+        for (const [a, b] of springs) {
+          const ex = px[b] - px[a];
+          const ey = py[b] - py[a];
+          const d = Math.sqrt(ex * ex + ey * ey) || 0.01;
+          const sf = (d - K) * 0.08;
+          const sfx = (ex / d) * sf;
+          const sfy = (ey / d) * sf;
+          fx[a] += sfx;
+          fy[a] += sfy;
+          fx[b] -= sfx;
+          fy[b] -= sfy;
+        }
+
+        let maxV2 = 0;
+        for (let i = 0; i < n; i++) {
+          fx[i] -= px[i] * GR;
+          fy[i] -= py[i] * GR;
+          vx[i] = (vx[i] + fx[i] * alpha) * 0.6;
+          vy[i] = (vy[i] + fy[i] * alpha) * 0.6;
+          px[i] += vx[i];
+          py[i] += vy[i];
+          const v2 = vx[i] * vx[i] + vy[i] * vy[i];
+          if (v2 > maxV2) maxV2 = v2;
+        }
+
+        // Early exit when layout is already near equilibrium.
+        if (maxV2 < 0.01) return 0;
+      }
+      return alpha;
+    },
+
+    positions() {
+      let cx = 0;
+      let cy = 0;
+      for (let i = 0; i < n; i++) {
+        cx += px[i];
+        cy += py[i];
+      }
+      cx /= n;
+      cy /= n;
+      const out = new Map<string, Point>();
+      nodes.forEach((nd, i) =>
+        out.set(nd.id, { x: px[i] - cx, y: py[i] - cy })
+      );
+      return out;
+    },
+  };
+}
+
 /** A view that fits all points into a `width` x `height` screen with `pad` px around. */
 export function fitView(
   points: Point[],

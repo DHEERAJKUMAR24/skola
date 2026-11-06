@@ -114,6 +114,19 @@
   gap: var(--spacing-sm);
 }
 
+.skills-badge {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  background: var(--color-surface-raised, rgba(128, 128, 128, 0.15));
+  color: var(--color-text-dimmed, rgba(128, 128, 128, 0.8));
+  border: 1px solid var(--color-border, rgba(128, 128, 128, 0.25));
+}
+
 @media (max-width: 720px) {
   .skills-editor {
     flex-direction: column;

@@ -51,10 +51,7 @@ async function collectChanges(since: number): Promise<WireRow[]> {
     const recs =
       tbl === "reviewLogs"
         ? await db.reviewLogs.where("reviewedAt").aboveOrEqual(since).toArray()
-        : await db
-            .table(tbl)
-            .filter((r) => (r.updatedAt ?? 0) >= since)
-            .toArray();
+        : await db.table(tbl).where("updatedAt").aboveOrEqual(since).toArray();
     for (const r of recs) {
       rows.push({
         tbl,
@@ -79,28 +76,66 @@ async function collectChanges(since: number): Promise<WireRow[]> {
 }
 
 async function applyRemote(rows: WireRow[]) {
+  if (!rows.length) return;
   syncFlags.applyingRemote = true;
   try {
+    // Group rows by table then bulk-fetch locals in one shot per table (avoids N+1).
+    const byTable = new Map<string, WireRow[]>();
     for (const r of rows) {
-      const table = db.table(r.tbl);
-      const local = await table.get(r.id);
-      const localAt = local
-        ? r.tbl === "reviewLogs"
-          ? r.updatedAt
-          : (local.updatedAt ?? 0)
-        : -1;
-      if (local && localAt >= r.updatedAt) continue;
-      try {
-        if (r.deleted) await table.delete(r.id);
+      let list = byTable.get(r.tbl);
+      if (!list) {
+        list = [];
+        byTable.set(r.tbl, list);
+      }
+      list.push(r);
+    }
+
+    for (const [tbl, tblRows] of byTable) {
+      const table = db.table(tbl);
+      const keyPath = keyPathOf(tbl);
+      const ids = tblRows.map((r) => r.id);
+      const locals = await table.bulkGet(ids);
+
+      const toPut: object[] = [];
+      const toDelete: string[] = [];
+
+      for (let i = 0; i < tblRows.length; i++) {
+        const r = tblRows[i];
+        const local = locals[i];
+        // reviewLogs are append-only; skip only exact duplicates.
+        const localAt = local
+          ? tbl === "reviewLogs"
+            ? r.updatedAt
+            : (local.updatedAt ?? 0)
+          : -1;
+        if (local && localAt >= r.updatedAt) continue;
+
+        if (r.deleted) toDelete.push(r.id);
         // Stored rows already carry the sender's updatedAt; keep it so edits don't bounce back.
-        else
-          await table.put({
-            ...(decode(r.data) as object),
-            [keyPathOf(r.tbl)]: r.id,
-          });
+        else toPut.push({ ...(decode(r.data) as object), [keyPath]: r.id });
+      }
+
+      try {
+        if (toDelete.length) await table.bulkDelete(toDelete);
+        if (toPut.length) await table.bulkPut(toPut);
       } catch (e) {
-        // One malformed row must not block every later pull.
-        console.warn(`sync: skipped ${r.tbl}/${r.id}`, e);
+        // Bulk failed — fall back row-by-row so one malformed row doesn't block the rest.
+        console.warn(
+          `sync: bulk apply failed for ${tbl}, retrying individually`,
+          e
+        );
+        for (const r of tblRows) {
+          try {
+            if (r.deleted) await table.delete(r.id);
+            else
+              await table.put({
+                ...(decode(r.data) as object),
+                [keyPath]: r.id,
+              });
+          } catch (e2) {
+            console.warn(`sync: skipped ${tbl}/${r.id}`, e2);
+          }
+        }
       }
     }
   } finally {

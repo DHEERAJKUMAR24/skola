@@ -59,7 +59,6 @@ export function useDeckStatsCacheInit() {
       const currentDayStart = getStartOfDay(new Date(), newDayStartHour);
 
       if (currentDayStart.getTime() !== lastCheckDay.getTime()) {
-        console.log("Day boundary crossed: invalidating all deck stat caches");
         await invalidateAllCaches();
         setLastCheckDay(currentDayStart);
       }
@@ -71,7 +70,6 @@ export function useDeckStatsCacheInit() {
       rolloverTimeout = setTimeout(async () => {
         if (!isMounted) return;
 
-        console.log("Day rollover: invalidating all deck stat caches");
         await invalidateAllCaches();
         setLastCheckDay(getStartOfDay(new Date(), newDayStartHour));
 
@@ -88,11 +86,6 @@ export function useDeckStatsCacheInit() {
     const initializeCaches = async () => {
       try {
         const decks = await db.decks.toArray();
-
-        console.log(
-          "Initializing deck stats cache for decks:",
-          decks.map((d) => ({ id: d.id, name: d.name }))
-        );
         const rootDecks = decks.filter(
           (deck) => !deck.superDecks || deck.superDecks.length === 0
         );

@@ -9,6 +9,7 @@ import {
   fileHistory,
   isSkillAdmin,
   ownerFiles,
+  resolveFile,
   restoreVersion,
   saveFile,
 } from "@/server/skills";
@@ -47,19 +48,49 @@ export async function POST(req: Request) {
   try {
     switch (b.op) {
       case "list": {
-        const files = await ownerFiles(db, owner);
-        const skills = [...new Set(files.map((f) => f.skill))].map((name) => ({
-          name,
-          files: files
-            .filter((f) => f.skill === name)
-            .map((f) => ({ path: f.path, updatedAt: f.updatedAt })),
-        }));
+        if (scope === "mine") {
+          const [defaults, mine] = await Promise.all([
+            ownerFiles(db, DEFAULT_OWNER),
+            ownerFiles(db, userId),
+          ]);
+          const myNames = new Set(mine.map((f) => f.skill));
+          const defNames = new Set(defaults.map((f) => f.skill));
+          const allNames = [...new Set([...defNames, ...myNames])].sort();
+          const skills = allNames.map((name) => {
+            const isCustom = myNames.has(name);
+            const srcFiles = isCustom ? mine : defaults;
+            return {
+              name,
+              source: isCustom ? "custom" : "default",
+              overridesDefault: isCustom && defNames.has(name),
+              files: srcFiles
+                .filter((f) => f.skill === name)
+                .map((f) => ({ path: f.path, updatedAt: f.updatedAt })),
+            };
+          });
+          return Response.json({ admin, scope, skills });
+        }
+        // Admin: default scope
+        const files = await ownerFiles(db, DEFAULT_OWNER);
+        const skills = [...new Set(files.map((f) => f.skill))]
+          .sort()
+          .map((name) => ({
+            name,
+            source: "default" as const,
+            overridesDefault: false,
+            files: files
+              .filter((f) => f.skill === name)
+              .map((f) => ({ path: f.path, updatedAt: f.updatedAt })),
+          }));
         return Response.json({ admin, scope, skills });
       }
       case "get": {
-        const f = (await ownerFiles(db, owner, skill)).find(
-          (x) => x.path === path
-        );
+        const f =
+          scope === "mine"
+            ? await resolveFile(db, userId, skill, path)
+            : ((await ownerFiles(db, owner, skill)).find(
+                (x) => x.path === path
+              ) ?? null);
         if (!f) return Response.json({ error: "Not found" }, { status: 404 });
         return Response.json({ content: f.content });
       }

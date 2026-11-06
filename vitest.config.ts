@@ -7,6 +7,9 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "src"),
+      // Sigma.js uses WebGL2RenderingContext at module evaluation time, which
+      // doesn't exist in jsdom. Redirect to a no-op stub for all tests.
+      sigma: path.resolve(__dirname, "src/test/mocks/sigma.ts"),
     },
   },
   test: {

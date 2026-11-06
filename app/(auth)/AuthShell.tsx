@@ -1,8 +1,9 @@
 "use client";
 
 import { type ReactNode, useEffect } from "react";
+import "./auth.css";
 
-/** Centers the card and applies the same light/dark theme the app uses. */
+/** Centred card with logo + app name. Applies the same light/dark theme as the app. */
 export default function AuthShell({ children }: { children: ReactNode }) {
   useEffect(() => {
     let pref = "auto";
@@ -21,16 +22,14 @@ export default function AuthShell({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <main
-      style={{
-        maxWidth: 380,
-        margin: "10vh auto",
-        padding: "0 16px",
-        height: "auto",
-      }}
-    >
-      <h1 style={{ marginBottom: 24 }}>Skola</h1>
-      {children}
+    <main className="auth-shell">
+      <div className="auth-shell__card">
+        <div className="auth-shell__brand">
+          <img src="/logo.svg" alt="" className="auth-shell__logo" />
+          <span className="auth-shell__app-name">Skola++</span>
+        </div>
+        <div className="auth-shell__body">{children}</div>
+      </div>
     </main>
   );
 }
