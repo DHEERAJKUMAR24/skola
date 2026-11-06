@@ -22,8 +22,8 @@ import {
   type Point,
   type View,
   buildGraph,
+  createSimulation,
   fitView,
-  forceLayout,
   panBy,
   zoomAt,
 } from "@/logic/master/graph";
@@ -54,6 +54,7 @@ export default function MasterGraphView() {
   const [isolated, setIsolated] = useState(false);
   const [neighbors, setNeighbors] = useState(true);
   const [selected, setSelected] = useState<string | null>(focus);
+  const [hovered, setHovered] = useState<string | null>(null);
   const [picking, setPicking] = useState(false);
   const [message, setMessage] = useState("");
 
@@ -74,32 +75,58 @@ export default function MasterGraphView() {
     [data, deckIds, neighbors, isolated]
   );
 
-  // Layout only reruns when the set of nodes or edges changes; old positions seed the new one.
+  // Positions animate via requestAnimationFrame using an incremental simulation.
+  // prev seeds new simulations from the last settled layout so only new nodes spring in.
   const prev = useRef<Map<string, Point>>(new Map());
   const sig = graph
     ? `${graph.nodes.map((n) => n.id).join(",")}|${graph.edges.map((e) => e.id).join(",")}`
     : "";
-  const pos = useMemo(() => {
-    if (!graph) return new Map<string, Point>();
-    const p = forceLayout(graph.nodes, graph.edges, { initial: prev.current });
-    prev.current = p;
-    return p;
-  }, [sig]);
+  const [pos, setPos] = useState<Map<string, Point>>(new Map());
+  const rafRef = useRef(0);
+  const fittedSig = useRef("");
+
+  useEffect(() => {
+    cancelAnimationFrame(rafRef.current);
+    if (!graph || graph.nodes.length === 0) {
+      setPos(new Map());
+      return;
+    }
+
+    const sim = createSimulation(graph.nodes, graph.edges, {
+      initial: prev.current,
+    });
+
+    // Run an initial sync burst so the first frame isn't all-at-origin.
+    sim.tick(30);
+    const initPos = sim.positions();
+    prev.current = initPos;
+    setPos(new Map(initPos));
+
+    if (fittedSig.current !== sig) {
+      fittedSig.current = sig;
+      const fp = focus ? initPos.get(focus) : undefined;
+      if (fp) setView({ k: 1.2, x: W / 2 - fp.x * 1.2, y: H / 2 - fp.y * 1.2 });
+      else setView(fitView([...initPos.values()], W, H));
+    }
+
+    // Steps per frame: keep O(n²) repulsion under ~50 ms.
+    const spf = Math.max(
+      1,
+      Math.min(8, Math.floor(50_000 / (graph.nodes.length ** 2 + 1)))
+    );
+
+    const step = () => {
+      const alpha = sim.tick(spf);
+      const p = sim.positions();
+      prev.current = p;
+      setPos(new Map(p));
+      if (alpha > 0) rafRef.current = requestAnimationFrame(step);
+    };
+    rafRef.current = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(rafRef.current);
+  }, [sig]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const [view, setView] = useState<View>({ x: W / 2, y: H / 2, k: 1 });
-  const fitted = useRef("");
-  useEffect(() => {
-    if (!graph || fitted.current === sig) return;
-    fitted.current = sig;
-    const focusPos = focus ? pos.get(focus) : undefined;
-    if (focusPos)
-      setView({
-        k: 1.2,
-        x: W / 2 - focusPos.x * 1.2,
-        y: H / 2 - focusPos.y * 1.2,
-      });
-    else setView(fitView([...pos.values()], W, H));
-  }, [sig, pos]);
 
   // ---- pan and zoom
   const svg = useRef<SVGSVGElement>(null);
@@ -129,15 +156,28 @@ export default function MasterGraphView() {
     [graph]
   );
   const sel = selected ? nodeById.get(selected) : undefined;
-  const around = useMemo(() => {
-    const set = new Set<string>();
-    if (!graph || !selected) return set;
-    for (const e of graph.edges) {
-      if (e.source === selected) set.add(e.target);
-      if (e.target === selected) set.add(e.source);
-    }
-    return set;
-  }, [graph, selected]);
+
+  const neighborsOf = useCallback(
+    (id: string) => {
+      const set = new Set<string>();
+      if (!graph) return set;
+      for (const e of graph.edges) {
+        if (e.source === id) set.add(e.target);
+        if (e.target === id) set.add(e.source);
+      }
+      return set;
+    },
+    [graph]
+  );
+
+  const around = useMemo(
+    () => neighborsOf(selected ?? ""),
+    [neighborsOf, selected]
+  );
+  const hoveredAround = useMemo(
+    () => neighborsOf(hovered ?? ""),
+    [neighborsOf, hovered]
+  );
   const selEdges = (graph?.edges ?? []).filter(
     (e) => e.source === selected || e.target === selected
   );
@@ -256,12 +296,62 @@ export default function MasterGraphView() {
             drag.current = null;
           }}
         >
+          <defs>
+            {/* Node fill gradients */}
+            <radialGradient id="mgr-master" cx="38%" cy="38%" r="62%">
+              <stop offset="0%" stopColor="#86efac" />
+              <stop offset="100%" stopColor="#16a34a" />
+            </radialGradient>
+            <radialGradient id="mgr-note" cx="38%" cy="38%" r="62%">
+              <stop offset="0%" stopColor="#93c5fd" />
+              <stop offset="100%" stopColor="#2563eb" />
+            </radialGradient>
+            {/* Subtle dot-grid pattern */}
+            <pattern
+              id="mgr-grid"
+              x="0"
+              y="0"
+              width="40"
+              height="40"
+              patternUnits="userSpaceOnUse"
+            >
+              <circle cx="0" cy="0" r="0.8" fill="rgba(255,255,255,0.08)" />
+              <circle cx="40" cy="0" r="0.8" fill="rgba(255,255,255,0.08)" />
+              <circle cx="0" cy="40" r="0.8" fill="rgba(255,255,255,0.08)" />
+              <circle cx="40" cy="40" r="0.8" fill="rgba(255,255,255,0.08)" />
+            </pattern>
+            {/* Vignette overlay */}
+            <radialGradient
+              id="mgr-vignette"
+              cx="50%"
+              cy="50%"
+              r="70%"
+              gradientUnits="userSpaceOnUse"
+              fx="50%"
+              fy="50%"
+            >
+              <stop offset="0%" stopColor="transparent" />
+              <stop offset="100%" stopColor="rgba(0,0,0,0.6)" />
+            </radialGradient>
+          </defs>
+
+          {/* Background */}
+          <rect width={W} height={H} className="master-graph__bg" />
+          <rect
+            width={W}
+            height={H}
+            fill="url(#mgr-grid)"
+            style={{ pointerEvents: "none" }}
+          />
+
+          {/* World: pan + zoom */}
           <g transform={`translate(${view.x} ${view.y}) scale(${view.k})`}>
             {graph?.edges.map((e) => {
               const a = pos.get(e.source);
               const b = pos.get(e.target);
               if (!a || !b) return null;
               const hot = e.source === selected || e.target === selected;
+              const hovHot = e.source === hovered || e.target === hovered;
               return (
                 <line
                   key={e.id}
@@ -269,7 +359,14 @@ export default function MasterGraphView() {
                   y1={a.y}
                   x2={b.x}
                   y2={b.y}
-                  className={`master-graph__edge${e.kind === "entry" ? " master-graph__edge--entry" : ""}${hot ? " master-graph__edge--hot" : ""}`}
+                  className={[
+                    "master-graph__edge",
+                    e.kind === "entry" && "master-graph__edge--entry",
+                    hot && "master-graph__edge--hot",
+                    !hot && hovHot && "master-graph__edge--hov",
+                  ]
+                    .filter(Boolean)
+                    .join(" ")}
                 />
               );
             })}
@@ -277,24 +374,45 @@ export default function MasterGraphView() {
               const p = pos.get(n.id);
               if (!p) return null;
               const isSel = n.id === selected;
-              const r = n.kind === "master" ? 11 : 6 + Math.min(n.degree, 6);
+              const isHov = n.id === hovered;
+              const r =
+                n.kind === "master" ? 11 : 5 + Math.min(n.degree * 0.9, 5);
+              const dimBySelect = selected && !isSel && !around.has(n.id);
+              const dimByHover =
+                hovered && !selected && !isHov && !hoveredAround.has(n.id);
               return (
                 <g
                   key={n.id}
                   transform={`translate(${p.x} ${p.y})`}
-                  className={`master-graph__node master-graph__node--${n.kind}${isSel ? " is-selected" : ""}${n.inScope ? "" : " is-outside"}${selected && !isSel && !around.has(n.id) ? " is-dim" : ""}`}
+                  className={[
+                    "master-graph__node",
+                    `master-graph__node--${n.kind}`,
+                    isSel && "is-selected",
+                    isHov && "is-hovered",
+                    !n.inScope && "is-outside",
+                    (dimBySelect || dimByHover) && "is-dim",
+                  ]
+                    .filter(Boolean)
+                    .join(" ")}
                   onPointerDown={(e) => e.stopPropagation()}
-                  onClick={() => setSelected(n.id)}
+                  onPointerEnter={() => setHovered(n.id)}
+                  onPointerLeave={() => setHovered(null)}
+                  onClick={() => setSelected(isSel ? null : n.id)}
                   onDoubleClick={() => open(n.id)}
                   onKeyDown={(e) => e.key === "Enter" && open(n.id)}
                   tabIndex={0}
-                  // biome-ignore lint/a11y/useSemanticElements: an SVG group cannot be a button element
+                  // biome-ignore lint/a11y/useSemanticElements: SVG group cannot be a button
                   role="button"
                   aria-label={n.label}
                 >
-                  <circle r={r} />
+                  {/* Blurred ambient glow */}
+                  <circle r={r * 2.8} className="node-halo" />
+                  {/* Pulsing ring on selected nodes */}
+                  {isSel && <circle r={r + 5} className="node-ring" />}
+                  {/* Main node body */}
+                  <circle r={r} className="node-core" />
                   {(showLabels || isSel || n.kind === "master") && (
-                    <text y={r + 12} textAnchor="middle">
+                    <text y={r + 14} textAnchor="middle">
                       {n.label.length > 28
                         ? `${n.label.slice(0, 27)}…`
                         : n.label}
@@ -304,6 +422,14 @@ export default function MasterGraphView() {
               );
             })}
           </g>
+
+          {/* Fixed vignette — stays at canvas edges regardless of pan/zoom */}
+          <rect
+            width={W}
+            height={H}
+            fill="url(#mgr-vignette)"
+            style={{ pointerEvents: "none" }}
+          />
         </svg>
         <aside className="master-graph__panel">
           {!graph && <Text variant="dimmed">{t("masterBuilder.loading")}</Text>}

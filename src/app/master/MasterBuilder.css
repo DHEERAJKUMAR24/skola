@@ -374,7 +374,7 @@
   flex-wrap: wrap;
 }
 
-/* Graph view */
+/* ── Graph view ─────────────────────────────────────────────────── */
 .master-graph {
   width: 100%;
   max-width: 1400px;
@@ -403,21 +403,21 @@
   width: 10px;
   height: 10px;
   border-radius: 50%;
-  background: var(--theme-neutral-500);
+  background: #60a5fa;
 }
 
 .master-graph__dot--master {
-  background: var(--theme-primary-500);
+  background: #4ade80;
 }
 
 .master-graph__line {
   display: inline-block;
   width: 18px;
-  border-top: 2px solid var(--theme-neutral-400);
+  border-top: 1.5px solid rgba(100, 116, 139, 0.6);
 }
 
 .master-graph__line--entry {
-  border-top: 2px dashed var(--theme-primary-500);
+  border-top: 2px dashed #4ade80;
 }
 
 .master-graph__body {
@@ -427,67 +427,163 @@
   align-items: start;
 }
 
+/* Canvas */
 .master-graph__svg {
   width: 100%;
   aspect-ratio: 1000 / 640;
-  border: 1px solid var(--theme-neutral-200);
   border-radius: var(--radius-md, 8px);
-  background: var(--theme-neutral-50);
+  overflow: hidden;
   touch-action: none;
   cursor: grab;
   user-select: none;
 }
 
+.master-graph__svg:active {
+  cursor: grabbing;
+}
+
+.master-graph__bg {
+  fill: #0d1117;
+}
+
+/* Edges */
 .master-graph__edge {
-  stroke: var(--theme-neutral-400);
-  stroke-width: 1;
+  stroke: rgba(148, 163, 184, 0.18);
+  stroke-width: 0.8;
   vector-effect: non-scaling-stroke;
+  transition: stroke 0.15s, stroke-opacity 0.15s;
 }
 
 .master-graph__edge--entry {
-  stroke: var(--theme-primary-500);
+  stroke: #4ade80;
+  stroke-opacity: 0.3;
   stroke-dasharray: 5 3;
 }
 
-.master-graph__edge--hot {
-  stroke-width: 2.5;
+.master-graph__edge--hov {
+  stroke: rgba(255, 255, 255, 0.35);
+  stroke-width: 1.2;
 }
 
+.master-graph__edge--hot {
+  stroke: rgba(255, 255, 255, 0.6);
+  stroke-width: 1.8;
+  stroke-opacity: 1;
+}
+
+.master-graph__edge--entry.master-graph__edge--hot {
+  stroke: #86efac;
+  stroke-opacity: 0.8;
+}
+
+/* Nodes */
 .master-graph__node {
   cursor: pointer;
 }
 
-.master-graph__node circle {
-  fill: var(--theme-neutral-500);
-  stroke: var(--theme-neutral-50);
+/* Blurred ambient glow halo */
+.node-halo {
+  fill: #60a5fa;
+  opacity: 0.12;
+  filter: blur(5px);
+  pointer-events: none;
+  transition: opacity 0.2s;
+}
+
+.master-graph__node--master .node-halo {
+  fill: #4ade80;
+}
+
+.master-graph__node:hover .node-halo,
+.master-graph__node.is-hovered .node-halo {
+  opacity: 0.28;
+}
+
+.master-graph__node.is-selected .node-halo {
+  opacity: 0.35;
+}
+
+/* Main node circle */
+.node-core {
+  fill: url(#mgr-note);
+  stroke: rgba(255, 255, 255, 0.2);
+  stroke-width: 1;
+  transition: transform 0.15s ease-out;
+  transform-origin: center;
+}
+
+.master-graph__node--master .node-core {
+  fill: url(#mgr-master);
   stroke-width: 1.5;
 }
 
-.master-graph__node--master circle {
-  fill: var(--theme-primary-500);
-}
-
-.master-graph__node.is-outside circle {
-  fill-opacity: 0.55;
+.master-graph__node.is-outside .node-core {
+  opacity: 0.45;
   stroke-dasharray: 3 2;
-  stroke: var(--theme-neutral-600);
 }
 
-.master-graph__node.is-selected circle {
-  stroke: var(--theme-neutral-950);
-  stroke-width: 3;
+.master-graph__node.is-selected .node-core {
+  stroke: rgba(255, 255, 255, 0.9);
+  stroke-width: 2;
 }
 
 .master-graph__node.is-dim {
-  opacity: 0.3;
+  opacity: 0.12;
+  transition: opacity 0.3s;
 }
 
+/* Hover: scale up + drop-shadow glow on the whole node group */
+.master-graph__node:hover .node-core,
+.master-graph__node.is-hovered .node-core {
+  transform: scale(1.25);
+}
+
+.master-graph__node:hover,
+.master-graph__node.is-hovered {
+  filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.3));
+}
+
+.master-graph__node.is-selected {
+  filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.5));
+}
+
+/* Pulsing ring for the selected node */
+.node-ring {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.7);
+  stroke-width: 1.5;
+  pointer-events: none;
+  transform-origin: center;
+  animation: graph-pulse 1.8s ease-out infinite;
+}
+
+@keyframes graph-pulse {
+  0% {
+    transform: scale(1);
+    stroke-opacity: 0;
+  }
+  8% {
+    stroke-opacity: 0.65;
+  }
+  100% {
+    transform: scale(3.2);
+    stroke-opacity: 0;
+  }
+}
+
+/* Labels — white with dark outline for legibility on the dark canvas */
 .master-graph__node text {
   font-size: 11px;
-  fill: var(--theme-neutral-800);
+  fill: rgba(226, 232, 240, 0.88);
   pointer-events: none;
+  paint-order: stroke fill;
+  stroke: rgba(0, 0, 0, 0.8);
+  stroke-width: 3px;
+  stroke-linejoin: round;
+  user-select: none;
 }
 
+/* Panel */
 .master-graph__panel {
   display: flex;
   flex-direction: column;
