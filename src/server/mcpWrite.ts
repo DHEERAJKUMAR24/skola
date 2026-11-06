@@ -108,6 +108,7 @@ const add_cards: Tool = {
   write: true,
   description: `Add flashcards to a deck (max ${MAX_NEW_CARDS} per call). Every item may have tags and a type, default "basic". Text is plain: line breaks become paragraphs and markup is escaped.
 - basic: front, back.
+- reverse: front, back; makes a double-sided note with two cards (front to back, and back to front), like the app's "Basic and reverse".
 - cloze: text with hidden parts written {{c1::answer}}; each number c1, c2, ... becomes its own card.
 - multiple_choice: question, choices (list of strings), correct (0-based position or list of positions), optional explanation.
 - list: front (the question) and items (the steps or points to recall, as a list; lines may start with >>> or a bullet), optional ordered (true when the order matters).
@@ -198,7 +199,7 @@ const add_cards: Tool = {
           ...(tags.length ? { tags } : {}),
         },
       });
-      for (const content of built.cards) {
+      for (const [ci, content] of built.cards.entries()) {
         const cardId = randomUUID();
         cardIds.push(cardId);
         rows.push({
@@ -211,6 +212,7 @@ const add_cards: Tool = {
             creationDate: when,
             model: createEmptyCard(when),
             content,
+            ...(built.previews ? { preview: built.previews[ci] } : {}),
           },
         });
       }
@@ -238,6 +240,7 @@ const edit_card: Tool = {
   write: true,
   description: `Edit a card's note, its tags, or suspend/unsuspend it. Only the fields you pass change. Fields by card type:
 - basic: front, back.
+- reverse: front, back (both cards of the note change).
 - cloze: text (the full new text with {{c1::...}} parts). A new number gets a new card; a number you remove keeps its card, so suspend that card.
 - multiple_choice: question, choices with correct (send both together), explanation.
 - list: front, items, ordered.

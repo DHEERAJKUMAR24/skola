@@ -8,6 +8,8 @@ import {
   IconChartBar,
   IconHome,
   IconSettings,
+  IconShare3,
+  IconTargetArrow,
   IconX,
 } from "@tabler/icons-react";
 import { t } from "i18next";
@@ -97,6 +99,20 @@ function Sidebar({ menuOpened, menuHandlers }: SidebarProps) {
               label={t("manage-cards.title")}
               path="/notes"
               icon={<IconCards />}
+              collapsed={minimalMode}
+              onClick={fullscreenMode ? menuHandlers.close : undefined}
+            />
+            <NavItem
+              label={t("graph.title")}
+              path="/graph"
+              icon={<IconShare3 />}
+              collapsed={minimalMode}
+              onClick={fullscreenMode ? menuHandlers.close : undefined}
+            />
+            <NavItem
+              label="Objectives"
+              path="/objectives"
+              icon={<IconTargetArrow />}
               collapsed={minimalMode}
               onClick={fullscreenMode ? menuHandlers.close : undefined}
             />

@@ -5,6 +5,7 @@ import { useHotkeys } from "@/lib/hooks/useHotkeys";
 import { db } from "@/logic/db";
 import { Deck } from "@/logic/deck/deck";
 import { deleteDeck } from "@/logic/deck/deleteDeck";
+import { createMasterFromDeck } from "@/logic/master/masterCards";
 import { useShowShortcutHints } from "@/logic/settings/hooks/useShowShortcutHints";
 import {
   IconArrowsExchange,
@@ -13,6 +14,7 @@ import {
   IconCursorText,
   IconDots,
   IconFileImport,
+  IconListCheck,
   IconPlayerPause,
   IconPlayerPlay,
   IconRepeat,
@@ -73,6 +75,13 @@ function DeckMenu({
     if (deck) {
       navigate(`/notes?deck=${deck.id}`);
     }
+  }, [deck, navigate]);
+
+  // A master card of this deck, one entry per card, opened in the editor to group and edit.
+  const createMaster = useCallback(async () => {
+    if (!deck) return;
+    const noteId = await createMasterFromDeck(deck);
+    navigate(`/notes?deck=${deck.id}&note=${noteId}`);
   }, [deck, navigate]);
 
   const showShortcutHints = useShowShortcutHints();
@@ -187,6 +196,11 @@ function DeckMenu({
           onClick={manageCards}
         >
           {t("deck.menu.manage-cards")}
+        </MenuItem>
+        <MenuItem leftSection={<IconListCheck />} onClick={createMaster}>
+          <span title={t("deck.menu.create-master-tooltip")}>
+            {t("deck.menu.create-master")}
+          </span>
         </MenuItem>
         <MenuItem
           leftSection={<IconFileImport />}

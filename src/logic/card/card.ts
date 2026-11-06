@@ -19,6 +19,9 @@ export const NoteTypeLabels: Record<NoteType, string> = {
   get [NoteType.List]() {
     return i18n.t("note.type.list");
   },
+  get [NoteType.Master]() {
+    return i18n.t("note.type.master");
+  },
   get [NoteType.DoubleSided]() {
     return i18n.t("note.type-double-sided");
   },

@@ -102,6 +102,7 @@ function NoteTable({
     [NoteType.DoubleSided]: t("note.type-double-sided"),
     [NoteType.MultipleChoice]: t("note.type.multiple-choice"),
     [NoteType.List]: t("note.type.list"),
+    [NoteType.Master]: t("note.type.master"),
     [NoteType.Undefined]: t("note.type.undefined"),
   };
 

@@ -11,9 +11,11 @@ import {
   str,
   studyable,
 } from "./mcpData";
+import { DUPLICATE_TOOLS } from "./mcpDuplicates";
 import { EVIDENCE_TOOLS } from "./mcpEvidence";
 import { INSTRUCTION_TOOLS } from "./mcpInstructions";
 import { MANAGE_TOOLS } from "./mcpManage";
+import { MASTER_TOOLS } from "./mcpMaster";
 import { OCCLUSION_TOOLS } from "./mcpOcclusion";
 import {
   RpcError,
@@ -157,7 +159,7 @@ const READ_TOOLS: Tool[] = [
   {
     name: "find_duplicates",
     description:
-      "Groups of notes with identical text (ignoring case, markup and spacing).",
+      "Groups of notes with identical text (ignoring case, markup and spacing). For the same meaning in other words use find_similar_cards.",
     inputSchema: {
       type: "object",
       properties: { deck_id: { type: "string" } },
@@ -183,11 +185,13 @@ const READ_TOOLS: Tool[] = [
 
 export const TOOLS: Tool[] = [
   ...READ_TOOLS,
+  ...DUPLICATE_TOOLS,
   ...SKILL_TOOLS,
   ...WRITE_TOOLS,
   ...OCCLUSION_TOOLS,
   ...STUDY_TOOLS,
   ...MANAGE_TOOLS,
+  ...MASTER_TOOLS,
   ...EVIDENCE_TOOLS,
   ...INSTRUCTION_TOOLS,
 ];

@@ -13,6 +13,7 @@ import { useSuperDecks } from "@/logic/deck/hooks/useSuperDecks";
 import { IconPlus } from "@tabler/icons-react";
 import { t } from "i18next";
 import { useNavigate } from "react-router-dom";
+import DeckMastersSection from "../master/DeckMastersSection";
 import NotebookView from "../notebook/NotebookView";
 import { AppHeaderContent } from "../shell/Header/Header";
 import DeckMenu from "./DeckMenu";
@@ -113,7 +114,11 @@ function DeckView() {
                   </Badge>
                 )}
               </Tabs.Tab>
+              <Tabs.Tab value="masters">{t("masterBuilder.tab")}</Tabs.Tab>
             </Tabs.List>
+            <Tabs.Panel value="masters">
+              <DeckMastersSection deck={deck} />
+            </Tabs.Panel>
             <Tabs.Panel value="notebook">
               <NotebookView />
             </Tabs.Panel>

@@ -1,3 +1,4 @@
+import { masterToText } from "../logic/master/masterModel";
 import type { Db } from "./db";
 import { pushRows } from "./sync";
 
@@ -60,8 +61,29 @@ export async function load(db: Db, userId: string, tbl: string) {
 
 const strip = (v: string) => v.replace(/<[^>]*>/g, " ").trim();
 
+/** Sections of a master note as the pure model reads them (tolerant of half-formed rows). */
+export const masterSections = (c: Row) =>
+  (Array.isArray(c.sections) ? c.sections : []).map((s: Row) => ({
+    id: String(s?.id ?? ""),
+    title: String(s?.title ?? ""),
+    entries: (Array.isArray(s?.entries) ? s.entries : []).map((e: Row) => ({
+      id: String(e?.id ?? ""),
+      text: String(e?.text ?? ""),
+      ...(e?.cardId ? { cardId: String(e.cardId) } : {}),
+    })),
+  }));
+
 export const noteFields = (n: Row): string[] => {
   const c = n.content ?? {};
+  if (c.type === "master")
+    // Title, then every section title and entry text, so search finds a master by its contents.
+    return [
+      strip(String(c.title ?? "")),
+      ...masterSections(c).flatMap((s: Row) => [
+        s.title,
+        ...s.entries.map((e: Row) => e.text),
+      ]),
+    ].filter(Boolean);
   return [
     ...Object.entries(c)
       .filter(
@@ -99,6 +121,7 @@ export const noteFieldMap = (n: Row): Record<string, string | string[]> => {
       .map((x: Row) => String(x.text ?? ""));
   }
   if (Array.isArray(c.items)) out.items = c.items.map(String);
+  if (c.type === "master") out.text = masterToText(masterSections(c));
   if (c.type === "list") out.ordered = c.ordered ? "true" : "false";
   if (c.type === "imageOcclusion") {
     if (typeof c.image === "string" && c.image.startsWith("https://"))
@@ -154,6 +177,16 @@ export const cardView = (c: Row, notes: Map<string, Row>) => ({
   fields: noteFieldMap(notes.get(c.note) ?? {}),
   text: noteText(notes.get(c.note) ?? {}),
   suspended: !!c.suspended,
+  // A master card's own study card: which section it covers (none = the whole master).
+  ...(c.content?.type === "master"
+    ? {
+        master: {
+          master_id: c.note,
+          section_id: c.content.sectionId ?? null,
+          retired: !!c.content.retired,
+        },
+      }
+    : {}),
 });
 
 export interface WriteRow {

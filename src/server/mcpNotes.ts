@@ -57,10 +57,13 @@ export interface BuiltNote {
   sortField: string;
   /** One entry per card to create; each is that card's `content`. */
   cards: Record<string, unknown>[];
+  /** Optional `preview` per card (same order as `cards`); the app sets it for reverse cards. */
+  previews?: string[];
 }
 
 export const CARD_TYPES = [
   "basic",
+  "reverse",
   "cloze",
   "multiple_choice",
   "list",
@@ -185,6 +188,20 @@ export async function buildNote(item: Item, ctx: Ctx): Promise<BuiltNote> {
         },
         sortField: preview(front),
         cards: [{ type: "normal" }],
+      };
+    }
+    case "reverse": {
+      // Same as the app's double-sided editor: field1 and field2, one card each way.
+      const field1 = html(text(item, "front") as string);
+      const field2 = html(text(item, "back") as string);
+      return {
+        content: { type: "doubleSided", field1, field2 },
+        sortField: preview(field1),
+        cards: [
+          { type: "doubleSided", frontIsField1: true },
+          { type: "doubleSided", frontIsField1: false },
+        ],
+        previews: [preview(field1), preview(field2)],
       };
     }
     case "cloze": {
@@ -339,6 +356,35 @@ export async function editNote(
       return {
         content: { ...content, front, back },
         sortField: preview(front),
+        newCards: [],
+      };
+    }
+    case "doubleSided": {
+      wrong([
+        "text",
+        "question",
+        "choices",
+        "correct",
+        "explanation",
+        "items",
+        "ordered",
+        "header",
+        "hide_all",
+        "areas",
+        "image",
+        "image_url",
+      ]);
+      const field1 =
+        item.front !== undefined
+          ? html(text(item, "front") as string)
+          : content.field1;
+      const field2 =
+        item.back !== undefined
+          ? html(text(item, "back") as string)
+          : content.field2;
+      return {
+        content: { ...content, field1, field2 },
+        sortField: preview(field1),
         newCards: [],
       };
     }
@@ -499,6 +545,10 @@ export async function editNote(
           })),
       };
     }
+    case "master":
+      throw new Error(
+        "[use_update_master_card] master cards are changed with update_master_card (sections and entries); edit_card only takes tags and suspended for them"
+      );
     default:
       throw new Error(
         `${content.type ?? "this"} cards cannot be edited here; edit them in the app`

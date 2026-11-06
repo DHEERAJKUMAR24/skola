@@ -1,3 +1,5 @@
+import type { HierarchyLevel } from "./hierarchy";
+
 export type Settings<T extends keyof SettingsValues> = {
   key: T;
   value: SettingsValues[T];
@@ -20,6 +22,8 @@ export interface SettingsValues {
   "#toursSeen": string[];
   /** Standing instructions for AI assistants; the MCP server hands them to every session. Synced. */
   "#aiInstructions"?: string;
+  /** The user's knowledge hierarchy (levels and their roles). `undefined` = default. Synced. See logic/settings/hierarchy.ts. */
+  "#hierarchy"?: HierarchyLevel[];
 
   "#colorSchemePreference": "light" | "dark" | "auto";
   "#densityPreference": "relaxed" | "compact" | "auto";

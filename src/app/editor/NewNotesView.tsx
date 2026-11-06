@@ -140,6 +140,10 @@ function NewNotesView() {
                       value: NoteType.List,
                     },
                     {
+                      label: NoteTypeLabels[NoteType.Master],
+                      value: NoteType.Master,
+                    },
+                    {
                       label: NoteTypeLabels[NoteType.ImageOcclusion],
                       value: NoteType.ImageOcclusion,
                     },

@@ -19,6 +19,7 @@ import {
   IconChartBar,
   IconCode,
   IconEdit,
+  IconHistory,
   IconTrash,
 } from "@tabler/icons-react";
 import { t } from "i18next";
@@ -26,6 +27,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import DebugCardModal from "../DebugCardModal/DebugCardModal";
 import CardSchedulingModal from "./CardSchedulingModal";
+import NoteHistoryModal from "./NoteHistoryModal";
 
 interface CardMenuProps {
   card: Card<NoteType> | undefined;
@@ -41,6 +43,7 @@ function CardMenu({ card, onDelete, onHidden }: CardMenuProps) {
   const [statisticsModalOpened, setStatisticsModalOpened] =
     useState<boolean>(false);
   const [schedulingOpened, setSchedulingOpened] = useState<boolean>(false);
+  const [historyOpened, setHistoryOpened] = useState<boolean>(false);
 
   const showShortcutHints = useShowShortcutHints();
   useHotkeys([
@@ -108,6 +111,14 @@ function CardMenu({ card, onDelete, onHidden }: CardMenuProps) {
         >
           {t("card.menu.options")}
         </MenuItem>
+        {note && (
+          <MenuItem
+            leftSection={<IconHistory size={16} />}
+            onClick={() => setHistoryOpened(true)}
+          >
+            History
+          </MenuItem>
+        )}
         <MenuItem
           leftSection={<IconCode size={16} />}
           rightSection={
@@ -141,6 +152,13 @@ function CardMenu({ card, onDelete, onHidden }: CardMenuProps) {
         card={card}
         onHidden={onHidden}
       />
+      {note && historyOpened && (
+        <NoteHistoryModal
+          noteId={note.id}
+          opened={historyOpened}
+          setOpened={setHistoryOpened}
+        />
+      )}
       <DebugCardModal
         opened={debugModalOpened}
         setOpened={setDebugModalOpened}

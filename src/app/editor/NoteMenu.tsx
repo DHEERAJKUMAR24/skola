@@ -10,12 +10,18 @@ import { useHotkeys } from "@/lib/hooks/useHotkeys";
 import { deleteNote } from "@/logic/note/deleteNote";
 import { Note, NoteType } from "@/logic/note/note";
 import { useShowShortcutHints } from "@/logic/settings/hooks/useShowShortcutHints";
-import { IconArrowsExchange, IconEdit, IconTrash } from "@tabler/icons-react";
+import {
+  IconArrowsExchange,
+  IconEdit,
+  IconHistory,
+  IconTrash,
+} from "@tabler/icons-react";
 import { t } from "i18next";
 import { Suspense, lazy, useState } from "react";
 
 const EditNoteModal = lazy(() => import("./EditNoteModal"));
 const MoveNoteModal = lazy(() => import("./MoveNoteModal"));
+const NoteHistoryModal = lazy(() => import("./NoteHistoryModal"));
 
 interface NoteMenuProps extends React.HTMLAttributes<HTMLDivElement> {
   note: Note<NoteType> | undefined;
@@ -37,6 +43,8 @@ function NoteMenu({
 
   const [hasOpenedEdit, setHasOpenedEdit] = useState(false);
   const [hasOpenedMove, setHasOpenedMove] = useState(false);
+  const [historyOpened, setHistoryOpened] = useState(false);
+  const [hasOpenedHistory, setHasOpenedHistory] = useState(false);
 
   async function tryDeleteNote() {
     if (!note) {
@@ -100,6 +108,15 @@ function NoteMenu({
           {t("note.menu.move")}
         </MenuItem>
         <MenuItem
+          leftSection={<IconHistory size={16} />}
+          onClick={() => {
+            setHasOpenedHistory(true);
+            setHistoryOpened(true);
+          }}
+        >
+          History
+        </MenuItem>
+        <MenuItem
           color="red"
           leftSection={<IconTrash size={16} />}
           rightSection={withShortcuts && showShortcutHints && <Kbd>←</Kbd>}
@@ -131,6 +148,15 @@ function NoteMenu({
             note={note}
             opened={moveModalOpened}
             setOpened={setMoveModalOpened}
+          />
+        </Suspense>
+      )}
+      {hasOpenedHistory && (
+        <Suspense fallback={null}>
+          <NoteHistoryModal
+            noteId={note.id}
+            opened={historyOpened}
+            setOpened={setHistoryOpened}
           />
         </Suspense>
       )}

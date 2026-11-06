@@ -53,6 +53,11 @@ export const TOURS: TourDef[] = [
         text: "Starts a session with the cards that are due plus new cards, within the daily limits of this deck's preset.",
       },
       {
+        el: ".tabs",
+        title: "Masters tab",
+        text: "A master card lists every concept of this deck. The Masters tab opens the builder, the recall sweep, the gap hunt and the weak-spot drill of each master.",
+      },
+      {
         el: ".deck-exam",
         title: "Exam date",
         text: "Set an exam date and every card is planned to come back before it. This panel shows how many cards are on track.",
@@ -106,6 +111,21 @@ export const TOURS: TourDef[] = [
     ],
   },
   {
+    id: "hierarchy-settings",
+    route: /^\/settings\/hierarchy$/,
+    steps: [
+      {
+        el: ".hierarchy-settings__levels",
+        title: "Your knowledge hierarchy",
+        text: "Name the levels you think in, from the biggest to the smallest. The role says what a level is in Skola: a nested deck, a master card, a section of one, or an entry (one concept). It syncs across your devices.",
+      },
+      {
+        title: "Hover the (i) icons",
+        text: "They explain each role and what a master card is.",
+      },
+    ],
+  },
+  {
     id: "connect",
     route: /^\/settings\/connect$/,
     steps: [
@@ -148,6 +168,68 @@ export const TOURS: TourDef[] = [
       {
         title: "Optimize and simulate",
         text: "After a few hundred reviews, Optimize fits the FSRS parameters to your own memory. The workload simulator shows how many reviews a day to expect.",
+      },
+    ],
+  },
+  {
+    id: "objectives",
+    route: /^\/objectives/,
+    steps: [
+      {
+        el: ".objectives",
+        title: "Learning objectives",
+        text: "An objective is something you want to be able to know (K) or do (S). Each of four Knowledge and four Skill dimensions is rated 0 to 4 from real work, and an objective counts as mastered only with high, unaided and retested results.",
+      },
+      {
+        title: "Open one to record evidence",
+        text: "The detail page shows what blocks mastery, the history of every assessment, and the cards linked to the objective. You can record an assessment by hand, and connected AI assistants record theirs here too. This page needs sign-in and a connection.",
+      },
+    ],
+  },
+  {
+    id: "master-builder",
+    route: /^\/master\/[^/]+/,
+    steps: [
+      {
+        el: ".master-builder__bar",
+        title: "A master card",
+        text: "A master lists every concept of a deck with nothing left out. Name it and set its status. The badges show your own level names (Settings > Hierarchy). Everything saves by itself.",
+      },
+      {
+        el: ".master-builder__main",
+        title: "Sections and entries",
+        text: "Each entry is one concept, linked to the card that tests it. Drag the handle, use the arrows, or tick entries to move or delete several at once.",
+      },
+      {
+        el: ".master-builder__side",
+        title: "Coverage",
+        text: "Shows what is left out: cards in no entry, entries with a missing card, empty sections, duplicates. Every problem has a fix button, and one click adds all orphan cards as entries grouped by tag.",
+      },
+      {
+        el: ".master-builder__tools",
+        title: "Activities",
+        text: "Recall sweep: type what you remember, then check yourself. Gap hunt: go through the coverage problems as a checklist. Weak-spot drill: study only the weakest linked cards. None of them changes a card's memory by itself.",
+      },
+    ],
+  },
+  {
+    id: "graph",
+    route: /^\/graph/,
+    steps: [
+      {
+        el: ".master-graph__bar",
+        title: "Graph of links",
+        text: "Masters and cards as dots, links as lines. Filter by deck; cards of other decks that link in are shown faded.",
+      },
+      {
+        el: ".master-graph__svg",
+        title: "Pan, zoom, open",
+        text: "Drag to pan, scroll to zoom. Click a dot to see its links, double-click to open it.",
+      },
+      {
+        el: ".master-graph__panel",
+        title: "Add or remove links",
+        text: "With a dot selected, add a link to any card in any deck, or remove a link. Entry links of a master are dashed.",
       },
     ],
   },

@@ -4,6 +4,7 @@ import { getCardsOf } from "@/logic/card/getCardsOf";
 import { CognitivePrompt } from "@/logic/cognitivePrompts";
 import { Deck } from "@/logic/deck/deck";
 import { useLearning } from "@/logic/learn";
+import { weakCardsForStudy } from "@/logic/master/builderData";
 import { useCallback, useState } from "react";
 import { Grade } from "ts-fsrs";
 
@@ -11,6 +12,8 @@ interface UseLearnSessionOptions {
   deck: Deck | undefined;
   learnAll: boolean;
   cram?: boolean;
+  /** Study only the weakest linked cards of this master note (see weakDrillParam). */
+  weakOfMaster?: string | null;
   newToReviewRatio: number;
 }
 
@@ -18,12 +21,14 @@ export function useLearnSession({
   deck,
   learnAll,
   cram,
+  weakOfMaster,
   newToReviewRatio,
 }: UseLearnSessionOptions) {
   const controller = useLearning(
     {
-      querier: () => getCardsOf(deck),
-      dependencies: [deck],
+      querier: () =>
+        weakOfMaster ? weakCardsForStudy(weakOfMaster) : getCardsOf(deck),
+      dependencies: [deck, weakOfMaster],
     },
     {
       learnAll,

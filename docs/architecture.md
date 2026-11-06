@@ -32,3 +32,12 @@ Supabase Postgres, migrations in `app/supabase/migrations`, applied with `pnpm d
 
 ## Pictures
 A note stores `media:<sha256>` for a picture. The bytes sit in the local-only `media` table (IndexedDB) and, after a background upload, in R2 at `u/<user>/<sha256>`. `src/logic/media/media.ts` saves, uploads (`uploadPending`, called after each sync, makes no request when nothing is waiting), resolves (`resolveMedia`, downloads once and checks the fingerprint) and moves old inline pictures out of notes (`migrateInlineImages`, once per session). `useMediaSrc` / `useMediaHtml` turn references into URLs for display; the TipTap image node does the same inside the editor. Server side: `media_objects` records ownership and size for quota and access checks.
+
+## Server-only tables added in 0.6.0
+Not synced to devices (assistants and the server own them): `mcp_study_sessions` (open MCP study sessions, 2 h idle expiry), `note_versions` (7-day edit history, written inside `pushRows`, see ADR 0011), `learning_objectives`, `objective_cards`, `objective_assessments` (K/S evidence, ADR 0012). Profile instructions are not a table: they are the synced setting `#aiInstructions` (ADR 0013).
+
+## Settings and skills pages
+Settings has a second sidebar (`src/app/settings/sections.ts`, routes `/settings/:section?/:item?`). In-app Connect and Skills editor pages (`src/app/skills/`) use the app's own sign-in and `/api/skills/overview` (public) and `/api/skills/admin` (bearer or cookie). Server-rendered pages for AI agents stay at `/skills`, `/skills/[name]`, `/skills/llm.txt` and `/llms.txt`.
+
+## Master cards
+A master card is an ordinary note (`type: "master"`) with sections and entries, plus its generated cards, so it syncs with no server table. Pure rules (model, coverage, suggested rating) are in `src/logic/master/` and import no Dexie, so the server can reuse them; Dexie helpers are in `src/logic/master/masterCards.ts`. The knowledge hierarchy is the synced setting `#hierarchy` (`src/logic/settings/hierarchy.ts`). See ADR 0014.

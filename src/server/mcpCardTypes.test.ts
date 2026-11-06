@@ -363,3 +363,48 @@ it("returns the picture of a card as an image block, and describes it in the car
   expect(JSON.stringify(found[0])).not.toContain(PNG_B64); // the bytes never leak into text
   expect(found.map((c: any) => c.occlusion).sort()).toEqual([1, 2]);
 });
+
+it("creates reverse (double-sided) notes like the app and edits them", async () => {
+  const deck = await deckOf();
+  const r = await call("add_cards", {
+    deck_id: deck,
+    cards: [{ type: "reverse", front: "chat", back: "cat & <b>kitten</b>" }],
+  });
+  expect(r).toMatchObject({ notes_added: 1, added: 2 });
+  const cards = await Promise.all(
+    r.card_ids.map((id: string) => row("cards", id))
+  );
+  expect(cards.map((c: any) => c.content)).toEqual([
+    { type: "doubleSided", frontIsField1: true },
+    { type: "doubleSided", frontIsField1: false },
+  ]);
+  expect(cards.map((c: any) => c.preview)).toEqual([
+    "chat",
+    "cat &amp; &lt;b&gt;kitten&lt;/b&gt;",
+  ]);
+  const note = await row("notes", cards[0].note);
+  expect(note.content).toEqual({
+    type: "doubleSided",
+    field1: "<p>chat</p>",
+    field2: "<p>cat &amp; &lt;b&gt;kitten&lt;/b&gt;</p>",
+  });
+  expect(note.sortField).toBe("chat");
+
+  const e = await call("edit_card", { card_id: r.card_ids[1], back: "cat" });
+  expect(e.error).toBeUndefined();
+  expect((await row("notes", cards[0].note)).content).toMatchObject({
+    field1: "<p>chat</p>",
+    field2: "<p>cat</p>",
+  });
+  expect(
+    (await call("edit_card", { card_id: r.card_ids[0], text: "x" })).error
+  ).toMatch(/do not apply to a doubleSided card/);
+  expect(
+    (
+      await call("add_cards", {
+        deck_id: deck,
+        cards: [{ type: "reverse", front: "a" }],
+      })
+    ).error
+  ).toMatch(/back must be/);
+});

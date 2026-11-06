@@ -14,6 +14,7 @@ import {
   deckScope,
   decode,
   load,
+  masterSections,
   ms,
   noteFieldMap,
   num,
@@ -21,6 +22,7 @@ import {
   snapshot,
   str,
 } from "./mcpData";
+import { MASTER_TYPE, replanRows } from "./mcpMaster";
 import { HISTORY_DAYS, pictureOmitted } from "./noteHistory";
 
 /** `[code] message` so a client can branch on the code and show the text. */
@@ -641,6 +643,17 @@ const get_card_details: Tool = {
       deck: c.deck,
       note_id: c.note,
       type: note?.content?.type,
+      ...(note?.content?.type === MASTER_TYPE
+        ? {
+            master: {
+              master_id: note.id,
+              title: note.content.title,
+              section_id: c.content?.sectionId ?? null,
+              retired: !!c.content?.retired,
+              hint: "Use get_master_card, master_coverage and update_master_card.",
+            },
+          }
+        : {}),
       tags: note?.tags ?? [],
       state: m.state,
       due: m.state === NEW ? null : ms(m.due),
@@ -931,6 +944,16 @@ const delete_cards: Tool = {
     ]);
     const gone = new Set(ids);
     const noteIds = new Set(ids.map((i) => (byId.get(i) as Row).note));
+    // A master's study cards follow its sections; deleting one by hand would only be undone.
+    const masterNotes = new Map(
+      notes.filter((n) => n.content?.type === MASTER_TYPE).map((n) => [n.id, n])
+    );
+    const own = ids.filter((i) => masterNotes.has((byId.get(i) as Row).note));
+    if (own.length)
+      throw new ManageError(
+        "master_card",
+        `${own.slice(0, 5).join(", ")} ${own.length === 1 ? "is a study card" : "are study cards"} of a master card. Use delete_master_card to delete the master, or update_master_card to change its sections.`
+      );
     const emptied = [...noteIds].filter(
       (n) => !all.some((c) => c.note === n && !gone.has(c.id))
     );
@@ -947,6 +970,18 @@ const delete_cards: Tool = {
         will_delete: {
           cards: ids.length,
           notes: emptied.length,
+          // Entries of master cards that point at these cards will dangle afterwards.
+          linked_from_masters: [...masterNotes.values()].flatMap((m) => {
+            const n = masterSections(m.content).reduce(
+              (t, s) =>
+                t +
+                s.entries.filter((e) => e.cardId && gone.has(e.cardId)).length,
+              0
+            );
+            return n
+              ? [{ master_id: m.id, title: m.content.title, entries: n }]
+              : [];
+          }),
           examples: ids.slice(0, 5).map((i) => {
             const n = nmap.get((byId.get(i) as Row).note);
             return {
@@ -1064,9 +1099,14 @@ const card_history: Tool = {
        WHERE user_id = $1 AND note_id = $2 ORDER BY replaced_at DESC`,
       [ctx.userId, noteId]
     );
+    // The app's History view compares each version with the text as stored now.
+    const now = (await load(ctx.db, ctx.userId, "notes")).find(
+      (n) => n.id === noteId
+    );
     return {
       note_id: noteId,
       keeps_days: HISTORY_DAYS,
+      current: now ? { fields: noteFieldMap(now), tags: now.tags ?? [] } : null,
       versions: rows.map((v) => ({
         version_id: v.id,
         replaced_at: Number(v.replaced_at),
@@ -1108,19 +1148,34 @@ const restore_card_version: Tool = {
       );
     const content = { ...v.content };
     if (pictureOmitted(content)) content.image = note.content?.image;
+    const restored = {
+      ...note,
+      content,
+      tags: v.tags?.length ? v.tags : undefined,
+      sortField: v.sort_field ?? note.sortField,
+    };
+    // A master's study cards follow its sections: bring them in step with the restored text.
+    const extra =
+      content.type === MASTER_TYPE
+        ? replanRows(
+            restored,
+            await load(ctx.db, ctx.userId, "cards"),
+            (await load(ctx.db, ctx.userId, "decks")).find(
+              (d) => d.id === note.deck
+            ),
+            ctx.now
+          )
+        : [];
     await putRows(ctx, [
-      {
-        tbl: "notes",
-        id: noteId,
-        data: {
-          ...note,
-          content,
-          tags: v.tags?.length ? v.tags : undefined,
-          sortField: v.sort_field ?? note.sortField,
-        },
-      },
+      { tbl: "notes", id: noteId, data: restored },
+      ...extra,
     ]);
-    return { ok: true, note_id: noteId, restored: str(a, "version_id") };
+    return {
+      ok: true,
+      note_id: noteId,
+      restored: str(a, "version_id"),
+      ...(extra.length ? { study_cards_adjusted: extra.length } : {}),
+    };
   },
 };
 

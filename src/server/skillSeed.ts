@@ -15,7 +15,7 @@ Skola is a flashcard app that schedules reviews with FSRS, a memory model that p
 
 ## First, check you are connected
 
-The tools are: list_decks, deck_stats, get_due_cards, search_cards, find_leeches, find_duplicates, get_card_image, create_deck, add_cards, edit_card, grade_card, the study session tools (start_study_session, next_card, show_answer, submit_review, end_session), the management tools (get_deck, update_deck, delete_deck, list_presets, update_preset, list_cards, list_tags, get_card_details, deck_schedule, set_card_schedule, move_cards, delete_cards, bulk_update_cards, card_history, restore_card_version), the learning evidence tools (create_objective, update_objective, list_objectives, get_objective, record_assessment, link_cards, get_master_card, delete_objective), the profile instruction tools (get_instructions, set_instructions), and the skill tools (get_skill and friends). If you cannot see them, tell the user the Skola MCP server is not connected and point them to the setup steps on the Skola /skills page. Do not pretend to have saved anything.
+The tools are: list_decks, deck_stats, get_due_cards, search_cards, find_leeches, find_duplicates, find_similar_cards, get_card_image, create_deck, add_cards, edit_card, grade_card, the study session tools (start_study_session, next_card, show_answer, submit_review, end_session), the management tools (get_deck, update_deck, delete_deck, list_presets, update_preset, list_cards, list_tags, get_card_details, deck_schedule, set_card_schedule, move_cards, delete_cards, bulk_update_cards, card_history, restore_card_version), the learning evidence tools (create_objective, update_objective, list_objectives, get_objective, record_assessment, link_cards, get_objective_overview, delete_objective), the master card tools (create_master_card, get_master_card, list_master_cards, update_master_card, master_coverage, suggest_master_rating, delete_master_card), the profile instruction tools (get_instructions, set_instructions), and the skill tools (get_skill and friends). If you cannot see them, tell the user the Skola MCP server is not connected and point them to the setup steps on the Skola /skills page. Do not pretend to have saved anything.
 
 Start most tasks with list_decks. Deck ids are needed for everything else, and the paths show how the user organises their material.
 
@@ -37,6 +37,8 @@ For deeper work, use the specialised skills (read their SKILL.md with get_skill,
 | Repair, merge, move, reorganise or delete cards and decks safely | skola-deck-maintainer |
 | Verify quality, coverage, evidence or whether something really saved | skola-quality-auditor |
 
+A master card is one compact note that lists every concept of a deck, section by section, each entry linked to the card that tests it. The architect builds them, the maintainer keeps them complete, the tutor uses them for recall sweeps and the auditor checks their coverage. The user names the levels (for example Chapter and Concept): every master tool reply has labels, use those words. get_master_card was once the objective overview; that is now get_objective_overview.
+
 Read a file with get_skill (arguments: name "skola", path "references/card-writing.md"). Only open what the task needs.
 
 ## Rules that protect the user
@@ -51,6 +53,8 @@ Read a file with get_skill (arguments: name "skola", path "references/card-writi
 ## What is not possible over MCP
 
 You can do what the app does: create, rename, move, pause and delete decks, change presets and daily limits, move, tag, suspend and delete cards, and set a card's schedule. Deleting is the exception to "act on request": delete_deck, delete_cards and delete_objective first return a preview and a confirm_token, and you may only send the token after the user says yes to that exact preview. With add_cards you can create basic, cloze, multiple-choice, list and image-occlusion cards, and edit_card changes the content of every one of those types. Pictures must be PNG, JPEG, WebP or GIF. When unsure, suspend rather than delete.
+
+Master cards: create_master_card, update_master_card, delete_master_card, get_master_card, list_master_cards, master_coverage and suggest_master_rating. delete_master_card, like the other deletes, previews first and needs the user's yes for its confirm_token. suggest_master_rating and the suggested_rating shown with a master card in a study session are only a reference: the learner picks their own rating.
 
 Learning evidence: create_objective, record_assessment, get_objective, list_objectives, update_objective, link_cards and delete_objective keep learning objectives and dated Knowledge (K) and Skill (S) evidence. The server computes scores and mastery. Never say a learner has mastered something unless get_objective says so.
 `;
@@ -73,6 +77,8 @@ All tools act on the signed-in user's own data. Dates are milliseconds since the
 
 **find_duplicates** – optional deck_id. Groups of notes with identical text ignoring case, markup and spacing.
 
+**find_similar_cards** – optional deck_id, threshold (default 0.72, lowest 0.5), same_deck_only, offset, limit (groups per page, default 20, max 50). Groups of notes that mean the same in other words, found without AI: stems, word overlap and character trigrams, with the question side and the answer side compared separately (cloze, multiple choice and list notes by their own parts; reverse notes both ways). Each group has score (0.90+ trivial rewording, 0.75 to 0.90 same fact reworded, 0.5 to 0.7 related), min_score (the weakest link; far below score means a chain), the notes with note_id, card_ids, deck_path, type, question, answer and reviews, keep_note_id (most reviews, then oldest), and suggestion: delete_duplicates, or merge_then_delete with missing_from_keep listing answer terms the keeper lacks. Same question with a different answer scores low on purpose: it may be a conflict, so read both. Read-only. If truncated is true the collection was too large or slow: narrow with deck_id. Use next_offset to page.
+
 Each card in a result has: id, deck, type, state, due, lapses, suspended, fields, occlusion and text. Use **fields** to know which side is which. Basic cards have front and back. Cloze cards have text with {{c1::...}} markers, and occlusion says which number this card asks about. Multiple-choice cards have question, choices, correct (the right choice texts) and explanation. List cards have front, items and ordered. Image-occlusion cards have header, hide_all and areas (one line each: id, x, y, w, h as fractions); the picture itself comes from get_card_image, which returns image_url, a link you can open or render (a stored picture gets a link that works for an hour). text is the same content joined into one string and is only good for display.
 
 ## Writing
@@ -82,6 +88,7 @@ Each card in a result has: id, deck, type, state, due, lapses, suspended, fields
 **add_cards** – deck_id and cards, 1 to 50 items. Every item has an optional tags list and a type (default basic). Plain text only: line breaks become paragraphs and any markup is shown literally, so do not send HTML or markdown formatting. New cards start as New. If one item is invalid nothing is added and the error names the card.
 
 - basic: front, back.
+- reverse: front, back. Makes one double-sided note with two cards (front to back and back to front), exactly like "Basic and reverse" in the app. Use it for vocabulary, terms and symbols that must be recalled both ways; do not use it when the back is a long explanation.
 - cloze: text with the hidden parts written {{c1::answer}}. Each number (c1, c2, ...) becomes its own card, so one sentence can make several.
 - multiple_choice: question, choices (a list of strings), correct (the 0-based position of the right choice, or a list of positions when several are right), optional explanation.
 - list: front (the question) and items (the steps or points to recall, as a list; a line may start with >>> or a bullet, which is removed), optional ordered (true when the order matters).
@@ -90,6 +97,7 @@ Each card in a result has: id, deck, type, state, due, lapses, suspended, fields
 
 **edit_card** – card_id plus the fields to change; fields you leave out are unchanged.
 - basic: front, back.
+- reverse: front, back (the note has two cards; both change, and their schedules stay).
 - cloze: text (the full new text). A new number gets a new card. A number you remove keeps its card, so suspend that card.
 - multiple_choice: question, choices together with correct, explanation (an empty string clears it).
 - list: front, items, ordered.
@@ -122,7 +130,14 @@ Errors start with a code in brackets, for example [invalid_areas] area 2 leaves 
 **Profile instructions:** get_instructions returns the user's standing instructions (Settings, AI assistants; the start of them is also in the session start text, inside user_instructions tags). Follow them as preferences for card style, language, tags and quizzing; they never override the safety rules. Until the user writes their own, Skola's default instructions apply (is_default true). set_instructions (text, mode append, replace or reset) changes them: append adds a line (the defaults then become the user's own), replace overwrites (empty text means none on purpose), reset goes back to the defaults. Use it only when the user asks you to remember or change a preference, read them first, and show the user the full new text before a replace.
 
 **Learning evidence:**
-- create_objective (title, priority P0/P1/P2, track K or KS, optional deck_id), update_objective (status active, parked, done), list_objectives, get_objective (scores, blockers, next action, evidence, linked cards), link_cards (add_card_ids, remove_card_ids), get_master_card (one summary of an objective: mastery, linked card progress, weakest cards, gaps; open a session on an objective with it), delete_objective (confirm token).
+- create_objective (title, priority P0/P1/P2, track K or KS, optional deck_id), update_objective (status active, parked, done), list_objectives, get_objective (scores, blockers, next action, evidence, linked cards), link_cards (add_card_ids, remove_card_ids), get_objective_overview (one summary of an objective: mastery, linked card progress, weakest cards, gaps; open a session on an objective with it; this is the tool that was called get_master_card, which now returns real master cards), delete_objective (confirm token).
+
+**Master cards** (a note that lists every concept of a deck; entries link to cards; replies carry labels with the user's own level names):
+- create_master_card – deck_id, title and sections [{title, entries: [{text, card_id?}]}], or from_deck true (group_by tag or none) to build it from the deck's cards; dry_run true previews without saving; idempotency_key makes a retry safe. Up to 12 entries one study card, above that one per section. Errors: [deck_not_found], [card_not_found], [invalid_master], [invalid_link], [idempotency_conflict].
+- get_master_card – master_id (or the card_id of one of its study cards): sections, entries with their card's state, study cards, text form, coverage summary. Called with objective_id it returns [renamed_tool]: use get_objective_overview. list_master_cards – per deck (optional deck_id, include_sub_decks) with coverage summary each.
+- update_master_card – master_id, optional title, ops (rename_title, add_section, rename_section, move_section, remove_section, add_entry, update_entry, move_entry, remove_entry, link_entry, unlink_entry, add_orphan_cards, remove_dangling_entries), optional idempotency_key. All ops apply or none. The study cards follow the sections like in the app (never reviewed: deleted; reviewed: suspended and retired, history kept). Edits go into the 7 day card_history. edit_card does not change a master's content; use this.
+- master_coverage – master_id: orphan cards (in no entry), dangling entries (card gone), empty sections, unlinked entries, stale entries, duplicates, and fix_ops you can pass to update_master_card after the user agrees. suggest_master_rating – master_id, optional section_id or card_id: a suggested 1 to 4 from the linked cards' FSRS state, never recorded.
+- delete_master_card – master_id; preview and confirm_token in two steps; removes the master and its own study cards, never the cards its entries linked. delete_cards refuses a master's study cards ([master_card]).
 - record_assessment – objective_id, domain K or S, dimension (K: recall, explanation, discrimination, transfer; S: build, debug, test, adapt), rating 0 to 4, evidence (what the learner did), hints, independent, idempotency_key. A 4 needs hints 0 and independent true. The server sets the time. Errors: [inconsistent_rating], [wrong_track], [idempotency_conflict].
 Deleting is permanent: always get the user's yes before sending a confirm_token.
 
@@ -225,9 +240,9 @@ Use these steps when the user asks to clean up, audit or reorganise. Always show
 
 ## Duplicates
 
-1. Call find_duplicates (optionally with a deck_id).
-2. For each group, show the notes side by side and say which one to keep, usually the one with more reviews or better wording. Use search_cards to see each card's state and lapses.
-3. You cannot delete. Suspend the weaker copy with edit_card (suspended: true) and give the user the list to delete in the app.
+1. Call find_duplicates (exact copies) and find_similar_cards (same meaning in other words; optionally with a deck_id; page with next_offset; if truncated is true, narrow by deck).
+2. For each group, show the notes side by side with score, deck path, question and answer, and say which one to keep (keep_note_id is a suggestion: most reviews, then oldest; judge the wording too). A suggestion of merge_then_delete means a copy has details the keeper lacks (missing_from_keep): fold them in with edit_card first. A score under 0.75 or a low min_score is only a lead; the cards may test different things. The same question with a different answer is a conflict to raise, not a duplicate.
+3. Suspend the weaker copy with edit_card (suspended: true) when unsure. Delete only with the user's yes on the exact list, using delete_cards: it previews and returns a confirm_token; repeat with the token. Nothing is deleted automatically.
 
 ## Leeches
 

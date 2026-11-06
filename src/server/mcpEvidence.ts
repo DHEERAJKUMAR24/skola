@@ -92,8 +92,20 @@ const brief = (o: Row, list: Row[], ctx: Ctx) => {
     s_score: s.S?.score ?? null,
     mastered: s.mastered,
     next: s.next,
+    // Latest rating per dimension (null = untested), so a list can show all eight without a call each.
+    dimensions: {
+      K: ratings(s.K),
+      S: s.S ? ratings(s.S) : null,
+    },
   };
 };
+
+const ratings = (d: {
+  dimensions: Record<string, { rating: number } | null>;
+}) =>
+  Object.fromEntries(
+    Object.entries(d.dimensions).map(([k, v]) => [k, v?.rating ?? null])
+  );
 
 const create_objective: Tool = {
   name: "create_objective",
@@ -240,12 +252,25 @@ const get_objective: Tool = {
     "One objective in full: every dimension's latest rating and date, K and S scores, what still blocks mastery, the recommended next action, the last 10 pieces of evidence, and the linked cards (count, due now, lapses). Use this before claiming anything about mastery.",
   inputSchema: {
     type: "object",
-    properties: { objective_id: { type: "string" } },
+    properties: {
+      objective_id: { type: "string" },
+      evidence_limit: {
+        type: "integer",
+        minimum: 1,
+        maximum: 200,
+        description:
+          "How many pieces of evidence to return, newest first (default 10).",
+      },
+    },
     required: ["objective_id"],
   },
   async run(ctx, a) {
     const o = await objective(ctx, str(a, "objective_id"));
     const ev = await assessments(ctx, o.id);
+    const limit = Math.min(
+      Math.max(Math.trunc(Number(a.evidence_limit)) || 10, 1),
+      200
+    );
     const status = evaluate(o.track as Track, ev.map(toAssessment), ctx.now);
     const { rows: links } = await ctx.db.query<{ card_id: string }>(
       "SELECT card_id FROM objective_cards WHERE user_id = $1 AND objective_id = $2",
@@ -267,7 +292,7 @@ const get_objective: Tool = {
         retest_days: MASTERY.retestDays,
       },
       evidence: ev
-        .slice(-10)
+        .slice(-limit)
         .reverse()
         .map((e) => ({
           assessment_id: e.id,
@@ -280,6 +305,7 @@ const get_objective: Tool = {
           evidence: e.evidence,
           source: e.source,
         })),
+      card_ids: links.map((l) => l.card_id),
       cards: {
         linked: links.length,
         missing: links.length - linked.length,
@@ -522,10 +548,10 @@ const delete_objective: Tool = {
   },
 };
 
-const get_master_card: Tool = {
-  name: "get_master_card",
+const get_objective_overview: Tool = {
+  name: "get_objective_overview",
   description:
-    "The master card of an objective: one summary of where the learner stands on it. Combines the objective, its K and S status and next action with the progress of its linked cards (new, learning, review, mature, due now, lapses, average recall chance now), the weakest cards, and coverage gaps (no cards, all cards new, untested dimensions). Read-only; nothing is stored. Use it to open a session on an objective and to decide what to practise next.",
+    "The overview of an objective: one summary of where the learner stands on it. Combines the objective, its K and S status and next action with the progress of its linked cards (new, learning, review, mature, due now, lapses, average recall chance now), the weakest cards, and coverage gaps (no cards, all cards new, untested dimensions). Read-only; nothing is stored. Use it to open a session on an objective and to decide what to practise next.",
   inputSchema: {
     type: "object",
     properties: { objective_id: { type: "string" } },
@@ -636,7 +662,7 @@ const get_master_card: Tool = {
 };
 
 export const EVIDENCE_TOOLS: Tool[] = [
-  get_master_card,
+  get_objective_overview,
   create_objective,
   update_objective,
   list_objectives,

@@ -1,0 +1,116 @@
+.objectives {
+  width: 100%;
+  max-width: 980px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.objectives__bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-sm);
+  align-items: center;
+  justify-content: space-between;
+}
+
+.objectives__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.objective-card {
+  width: 100%;
+  text-align: left;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  background: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-md);
+  border: 1px solid var(--theme-neutral-200);
+  border-radius: var(--radius-md, 8px);
+}
+
+.objective-card:hover {
+  border-color: var(--theme-primary-500, currentColor);
+}
+
+.objectives__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-xs);
+  align-items: center;
+}
+
+.objectives__dims {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--spacing-xs);
+}
+
+.objectives__dim {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--spacing-xs);
+  padding: 2px var(--spacing-xs);
+  border: 1px solid var(--theme-neutral-200);
+  border-radius: var(--radius-sm, 6px);
+  font-size: var(--font-size-xs, 0.75rem);
+}
+
+.objectives__dim[data-rating="none"] {
+  opacity: 0.55;
+}
+
+.objectives__dim[data-low="true"] {
+  border-color: var(--theme-red-400, currentColor);
+}
+
+.objectives__table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.objectives__table th,
+.objectives__table td {
+  text-align: left;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-bottom: 1px solid var(--theme-neutral-200);
+  vertical-align: top;
+}
+
+.objectives__form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  min-width: min(480px, 100%);
+}
+
+.objectives__panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md);
+  border: 1px solid var(--theme-neutral-200);
+  border-radius: var(--radius-md, 8px);
+}
+
+.objectives__evidence {
+  white-space: pre-wrap;
+  word-break: break-word;
+  margin: 0;
+}
+
+@media (max-width: 640px) {
+  .objectives__dims {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

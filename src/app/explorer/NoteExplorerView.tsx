@@ -1,5 +1,6 @@
 import { AppHeaderContent } from "@/app/shell/Header/Header";
 import { AppBreadcrumbs } from "@/components/AppBreadcrumbs";
+import { Button } from "@/components/ui/Button";
 import { useDebouncedState } from "@/lib/hooks/useDebouncedState";
 import { useDocumentTitle } from "@/lib/hooks/useDocumentTitle";
 import { descendantIds } from "@/logic/deck/deckPath";
@@ -14,6 +15,7 @@ import { useSearchParams } from "react-router-dom";
 import NoteTable from "../NoteTable/NoteTable";
 import EditNoteModal from "../editor/EditNoteModal";
 import { EditNoteView } from "../editor/EditNoteView";
+import DuplicatesModal from "./DuplicatesModal";
 import { NoteBulkBar } from "./NoteBulkBar";
 import { NoteExplorerControls } from "./NoteExplorerControls";
 import { useNoteSelection } from "./hooks/useNoteSelection";
@@ -100,6 +102,7 @@ function NoteExplorerView() {
     [deckId, filter, sort, tagParam, decks]
   );
 
+  const [duplicatesOpened, setDuplicatesOpened] = useState(false);
   const [editNoteModalOpened, setEditNoteModalOpened] =
     useState<boolean>(false);
 
@@ -185,6 +188,19 @@ function NoteExplorerView() {
         selectedTag={tagParam ?? ""}
         onTagSelect={handleTagSelect}
       />
+
+      <div>
+        <Button size="sm" onClick={() => setDuplicatesOpened(true)}>
+          Find duplicates
+        </Button>
+      </div>
+      {duplicatesOpened && (
+        <DuplicatesModal
+          opened
+          setOpened={setDuplicatesOpened}
+          deckIds={deckScope}
+        />
+      )}
 
       {selectedNoteIds.size > 0 && (
         <NoteBulkBar selectedIds={[...selectedNoteIds]} decks={decks} />

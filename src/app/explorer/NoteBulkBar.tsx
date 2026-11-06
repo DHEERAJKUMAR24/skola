@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui";
 import { Select } from "@/components/ui/Select";
+import { setSuspended } from "@/logic/card/cardControls";
 import { db } from "@/logic/db";
 import type { Deck } from "@/logic/deck/deck";
 import { decksWithPaths } from "@/logic/deck/deckPath";
@@ -64,6 +65,19 @@ export function NoteBulkBar({ selectedIds, decks }: Props) {
     }, `Tagged ${count} ${plural}.`);
   }
 
+  /** Every card of the selected notes, as bulk_update_cards does over MCP. */
+  function suspendSelection(suspended: boolean) {
+    void run(
+      async () => {
+        const cards = await db.cards.where("note").anyOf(selectedIds).toArray();
+        for (const c of cards) await setSuspended(c.id, suspended);
+      },
+      suspended
+        ? `Suspended the cards of ${count} ${plural}. They are not studied until you unsuspend them.`
+        : `Unsuspended the cards of ${count} ${plural}.`
+    );
+  }
+
   return (
     <div
       className={BASE}
@@ -121,6 +135,13 @@ export function NoteBulkBar({ selectedIds, decks }: Props) {
           }
         />
       )}
+
+      <Button variant="default" onClick={() => suspendSelection(true)}>
+        Suspend
+      </Button>
+      <Button variant="default" onClick={() => suspendSelection(false)}>
+        Unsuspend
+      </Button>
 
       {message && <output className={`${BASE}__message`}>{message}</output>}
     </div>

@@ -1,14 +1,17 @@
 import { createHash, randomUUID } from "node:crypto";
+import { sectionsForCard } from "../logic/master/masterModel";
 import {
   type Ctx,
   type Row,
   type Tool,
+  masterSections,
   ms,
   noteFieldMap,
   snapshot,
   str,
   studyable,
 } from "./mcpData";
+import { masterSuggestion } from "./mcpMaster";
 import { gradeCard } from "./mcpWrite";
 
 const NEW = 0;
@@ -149,6 +152,17 @@ function questionOf(card: Row, note: Row): Record<string, unknown> {
         header: c.header ? plain(String(c.header)) : undefined,
         picture: "call get_card_image with this card_id to see the picture",
       };
+    case "master": {
+      // Recall sweep: name the topic and the section titles, never the entries (those are the answer).
+      const shown = sectionsForCard(masterSections(c), card.content?.sectionId);
+      return {
+        master: String(c.title ?? ""),
+        recall_everything_in: shown.map((s) => s.title),
+        entries_to_recall: shown.reduce((n, s) => n + s.entries.length, 0),
+        instruction:
+          "Ask the learner to list every concept of each section from memory, then show_answer.",
+      };
+    }
     default:
       return { front: plain(String(c.front ?? "")) };
   }
@@ -163,6 +177,15 @@ function answerOf(card: Row, note: Row): Record<string, unknown> {
       (_m, n: string, ans: string) => (Number(n) === target ? `«${ans}»` : ans)
     );
     return { text: plain(text) };
+  }
+  if (c.type === "master") {
+    const shown = sectionsForCard(masterSections(c), card.content?.sectionId);
+    return {
+      sections: shown.map((s) => ({
+        title: s.title,
+        entries: s.entries.map((e) => e.text),
+      })),
+    };
   }
   const f = noteFieldMap(note);
   if (c.type === "normal") return { back: f.back, front: f.front };
@@ -422,6 +445,13 @@ const show_answer: Tool = {
       card_id: card.id,
       question: questionOf(card, note),
       answer: answerOf(card, note),
+      ...(note.content?.type === "master"
+        ? {
+            suggested_rating: await masterSuggestion(ctx, card, note),
+            suggestion_note:
+              "Only a reference from the linked cards' schedules. The learner chooses their own rating; never pick it for them.",
+          }
+        : {}),
       next_step:
         "Compare with the learner's own answer, then call submit_review (1 Again, 2 Hard, 3 Good, 4 Easy).",
     };

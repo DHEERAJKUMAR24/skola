@@ -5,6 +5,7 @@ export type SettingsSectionId =
   | "editing"
   | "learn"
   | "presets"
+  | "hierarchy"
   | "ai"
   | "connect"
   | "skills"
@@ -32,6 +33,7 @@ export const SETTINGS_GROUPS: SettingsGroup[] = [
     sections: [
       { id: "learn", label: "Learning" },
       { id: "presets", label: "Study presets" },
+      { id: "hierarchy", label: "Hierarchy" },
     ],
   },
   {

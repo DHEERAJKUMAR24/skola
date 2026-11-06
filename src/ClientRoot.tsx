@@ -4,6 +4,9 @@ import NewNotesView from "@/app/editor/NewNotesView";
 import NoteExplorerView from "@/app/explorer/NoteExplorerView";
 import HomeView from "@/app/home/HomeView";
 import LearnView from "@/app/learn/LearnView/LearnView";
+import MasterBuilderView from "@/app/master/MasterBuilderView";
+import MasterGraphView from "@/app/master/MasterGraphView";
+import ObjectivesView from "@/app/objectives/ObjectivesView";
 import SettingsView from "@/app/settings/SettingsView";
 import StatsView from "@/app/statistics/StatsView";
 import { ensureDefaultPreset } from "@/logic/deck/presets";
@@ -48,6 +51,18 @@ const router = createHashRouter(
         {
           path: "/notes",
           element: <NoteExplorerView />,
+        },
+        {
+          path: "/objectives/:id?",
+          element: <ObjectivesView />,
+        },
+        {
+          path: "/master/:noteId",
+          element: <MasterBuilderView />,
+        },
+        {
+          path: "/graph",
+          element: <MasterGraphView />,
         },
         {
           path: "/stats/:deckId?",

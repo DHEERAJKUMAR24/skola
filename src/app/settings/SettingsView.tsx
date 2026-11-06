@@ -6,6 +6,7 @@ import {
   IconBraces,
   IconCloud,
   IconDatabase,
+  IconHierarchy2,
   IconInfoCircle,
   IconPalette,
   IconPencil,
@@ -28,6 +29,7 @@ import AppearanceSettingsView from "./AppearanceSettingsView";
 import DatabaseSettingsView from "./DatabaseSettingsView/DatabaseSettingsView";
 import EditingSettingsView from "./EditingSettingsView/EditingSettingsView";
 import GeneralSettingsView from "./GeneralSettingsView";
+import HierarchySettingsView from "./HierarchySettingsView";
 import LearnSettingsView from "./LearnSettingsView";
 import SyncSettingsView from "./SyncSettingsView";
 import StudyPresetsView from "./presets/StudyPresetsView";
@@ -42,6 +44,7 @@ const ICONS: Record<SettingsSectionId, ReactNode> = {
   editing: <IconPencil size={18} />,
   learn: <IconBolt size={18} />,
   presets: <IconStack2 size={18} />,
+  hierarchy: <IconHierarchy2 size={18} />,
   ai: <IconSparkles size={18} />,
   connect: <IconPlugConnected size={18} />,
   skills: <IconSchool size={18} />,
@@ -95,6 +98,7 @@ export default function SettingsView() {
         {section === "editing" && <EditingSettingsView />}
         {section === "learn" && <LearnSettingsView />}
         {section === "presets" && <StudyPresetsView />}
+        {section === "hierarchy" && <HierarchySettingsView />}
         {section === "ai" && <AiSettingsView />}
         {section === "connect" && (item ? <SkillView /> : <ConnectView />)}
         {section === "skills" && <SkillEditorView />}

@@ -376,12 +376,12 @@ describe("master card", () => {
       ],
     });
     const id = await objective(u, { deck_id: deck });
-    const empty = await call(u, "get_master_card", { objective_id: id });
+    const empty = await call(u, "get_objective_overview", { objective_id: id });
     expect(empty.cards).toMatchObject({ linked: 0, avg_recall_now: null });
     expect(empty.gaps.join()).toContain("no cards are linked");
 
     await call(u, "link_cards", { objective_id: id, add_card_ids: card_ids });
-    const fresh = await call(u, "get_master_card", { objective_id: id });
+    const fresh = await call(u, "get_objective_overview", { objective_id: id });
     expect(fresh.gaps.join()).toContain("every linked card is still new");
     expect(fresh.weakest).toEqual([]);
 
@@ -395,7 +395,7 @@ describe("master card", () => {
       rating: 3,
       evidence: "said it from memory",
     });
-    const m = await call(u, "get_master_card", { objective_id: id });
+    const m = await call(u, "get_objective_overview", { objective_id: id });
     expect(m.objective).toMatchObject({ title: "Closures", track: "KS" });
     expect(m.mastery).toMatchObject({ k_score: null, mastered: false });
     expect(m.mastery.next.action).toBe("assess");
@@ -412,10 +412,17 @@ describe("master card", () => {
     expect(m.gaps.join()).toContain("suspended");
     expect(m.gaps.join()).toContain("K untested: explanation");
     expect(
-      (await call(u, "get_master_card", { objective_id: "obj_ghost" })).code
+      (await call(u, "get_objective_overview", { objective_id: "obj_ghost" }))
+        .code
     ).toBe("objective_not_found");
     expect(
-      (await call(newUser(), "get_master_card", { objective_id: id })).code
+      (await call(newUser(), "get_objective_overview", { objective_id: id }))
+        .code
     ).toBe("objective_not_found");
+    expect(m.deprecated).toBeUndefined();
+    // The old alias is gone: get_master_card now means real master cards, with a clear hint.
+    const old = await call(u, "get_master_card", { objective_id: id });
+    expect(old.code).toBe("renamed_tool");
+    expect(old.error).toContain("get_objective_overview");
   });
 });

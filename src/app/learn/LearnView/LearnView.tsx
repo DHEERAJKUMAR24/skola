@@ -5,6 +5,7 @@ import { Paper } from "@/components/ui/Paper";
 import { useDebouncedValue } from "@/lib/hooks/useDebouncedValue";
 import { getAdapter } from "@/logic/NoteTypeAdapter";
 import { useDeckFromUrl } from "@/logic/deck/hooks/useDeckFromUrl";
+import { parseWeakDrillParam } from "@/logic/master/activities";
 import { useNote } from "@/logic/note/hooks/useNote";
 import { useSetting } from "@/logic/settings/hooks/useSetting";
 import { useEffect } from "react";
@@ -28,6 +29,7 @@ function LearnView() {
 
   const navigate = useNavigate();
   const [deck, isReady, params] = useDeckFromUrl();
+  const weakOfMaster = parseWeakDrillParam(params);
 
   const {
     controller,
@@ -40,8 +42,10 @@ function LearnView() {
   } = useLearnSession({
     deck,
     // "cram" reviews everything once and leaves the FSRS schedule untouched.
-    learnAll: params === "all" || params === "cram",
+    // A weak-spot drill of a master card studies its weakest linked cards, due or not.
+    learnAll: params === "all" || params === "cram" || !!weakOfMaster,
     cram: params === "cram",
+    weakOfMaster,
     newToReviewRatio,
   });
 
