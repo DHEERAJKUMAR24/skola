@@ -4,7 +4,7 @@ import { Suspense, useEffect } from "react";
 import { I18nextProvider } from "react-i18next";
 import { Outlet, useLocation } from "react-router-dom";
 import WelcomeView from "./app/WelcomeView";
-import AuthGate from "./app/login/AuthGate";
+import LandingPage from "./app/login/LandingPage";
 import CreateFab from "./app/shell/CreateFab";
 import Header from "./app/shell/Header/Header";
 import Sidebar from "./app/shell/Sidebar/Sidebar";
@@ -72,7 +72,7 @@ function AppContent() {
     <I18nextProvider i18n={i18n}>
       <NotificationContainer />
       {syncUrl && !authEmail && !skippedAuth ? (
-        <AuthGate onSkip={() => setSkippedAuth(true)} />
+        <LandingPage onSkip={() => setSkippedAuth(true)} />
       ) : registered ? (
         <div className={BASE}>
           <Header
