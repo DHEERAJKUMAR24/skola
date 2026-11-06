@@ -29,6 +29,8 @@
       "edit": "Edit",
       "import-cards": "Import Cards",
       "label": "Menu",
+      "create-master": "Create Master Card",
+      "create-master-tooltip": "A master card lists every concept in this deck with nothing left out. This makes one with an entry for each card; you then group and edit it.",
       "manage-cards": "Manage Cards",
       "move": "Move",
       "options": "Options",

@@ -45,8 +45,11 @@ export function NavItem({
     e.stopPropagation();
   };
 
+  const hasRightElement = Boolean(!collapsed && rightElement);
+
   const classes = [
     BASE,
+    hasRightElement && `${BASE}--with-right`,
     isActive && `${BASE}--active`,
     collapsed && `${BASE}--collapsed`,
     size === "small" && `${BASE}--small`,
@@ -59,6 +62,27 @@ export function NavItem({
       ? { paddingLeft: `calc(var(--spacing-md) + ${indent * 0.75}rem)` }
       : undefined;
 
+  if (hasRightElement) {
+    return (
+      <div className={classes}>
+        <button
+          type="button"
+          className={`${BASE}__main`}
+          onClick={handleClick}
+          title={collapsed ? label : undefined}
+          style={style}
+          {...props}
+        >
+          <span className={`${BASE}__icon`}>{icon}</span>
+          <span className={`${BASE}__label`}>{label}</span>
+        </button>
+        <span className={`${BASE}__right`} onClick={handleRightElementClick}>
+          {rightElement}
+        </span>
+      </div>
+    );
+  }
+
   return (
     <button
       type="button"
@@ -70,11 +94,6 @@ export function NavItem({
     >
       <span className={`${BASE}__icon`}>{icon}</span>
       {!collapsed && <span className={`${BASE}__label`}>{label}</span>}
-      {!collapsed && rightElement && (
-        <span className={`${BASE}__right`} onClick={handleRightElementClick}>
-          {rightElement}
-        </span>
-      )}
     </button>
   );
 }

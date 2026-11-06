@@ -45,7 +45,8 @@ const DeckTreeItem = memo(
       navigate(`/deck/${deck.id}`);
     };
 
-    const handleToggle = () => {
+    const handleToggle = (e: React.MouseEvent) => {
+      e.stopPropagation();
       setIsOpened(!isOpened);
     };
 

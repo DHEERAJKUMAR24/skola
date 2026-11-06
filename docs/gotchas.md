@@ -48,4 +48,6 @@
 - **A master's study cards are managed by the plan.** `delete_cards` refuses them (`[master_card]`) and `edit_card` refuses content edits; use `delete_master_card` and `update_master_card`. `restore_card_version` re-plans the cards after restoring text.
 - **Server card ids for a master:** deterministic only for `create_master_card` with an `idempotency_key`; later study cards from `update_master_card` get random ids (a deleted card's tombstone must not be reused).
 - **Coverage counts the master's own deck only**, ignoring other masters' cards; moving a master (`move_cards`) changes which deck it is measured against.
+- **`<button>` cannot contain nested buttons or interactive elements:** Browsers and React SSR/hydration reject `<button>` as a descendant of `<button>`. When a row component like `NavItem` renders secondary actions (e.g. `rightElement` with `IconButton` or expand toggles), the row wrapper must be a container element (e.g. `div.nav-item--with-right`) with the primary click area rendered as a sibling `<button className="nav-item__main">`.
+
 - **The server never imports `NoteType` from `src/logic/note/note.ts`** (it pulls in UI note types); use the string `"master"` (`MASTER_TYPE` in `mcpMaster.ts`).
