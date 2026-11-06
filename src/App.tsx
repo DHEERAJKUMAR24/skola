@@ -1,4 +1,5 @@
 import "./app/shell/AppShell.css";
+import "@/style/index.css";
 
 import { Suspense, useEffect } from "react";
 import { I18nextProvider } from "react-i18next";
