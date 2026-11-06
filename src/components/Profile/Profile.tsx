@@ -22,15 +22,32 @@ import "./Profile.css";
 const BASE = "profile";
 const RING_PAD = 4;
 
-/** Short status text, updated every second only while a countdown is running. */
+function formatSyncedAt(lastSyncedAt: number, now: number): string {
+  const diff = now - lastSyncedAt;
+  if (diff < 60_000) return "Synced just now";
+  if (diff < 3_600_000)
+    return `Synced ${Math.floor(diff / 60_000)} min ago`;
+  return `Synced at ${new Date(lastSyncedAt).toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+  })}`;
+}
+
+/** Short status text, updated every second while a countdown is running and every minute while idle. */
 export function useSyncLabel(status: SyncStatus) {
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
-    if (status.phase !== "pending") return;
-    setNow(Date.now());
-    const t = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(t);
-  }, [status.phase]);
+    if (status.phase === "pending") {
+      setNow(Date.now());
+      const t = setInterval(() => setNow(Date.now()), 1000);
+      return () => clearInterval(t);
+    }
+    if (status.phase === "idle" && status.lastSyncedAt) {
+      setNow(Date.now());
+      const t = setInterval(() => setNow(Date.now()), 60_000);
+      return () => clearInterval(t);
+    }
+  }, [status.phase, status.lastSyncedAt]);
 
   switch (status.phase) {
     case "pending":
@@ -42,7 +59,9 @@ export function useSyncLabel(status: SyncStatus) {
     case "offline":
       return "Offline, saved on this device";
     default:
-      return status.lastSyncedAt ? "Synced" : "Signed in";
+      return status.lastSyncedAt
+        ? formatSyncedAt(status.lastSyncedAt, now)
+        : "Signed in";
   }
 }
 

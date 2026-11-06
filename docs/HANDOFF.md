@@ -9,6 +9,21 @@ Single source of truth for "where are we". Rewrite the sections below at the end
 - After v0.6.0: master card feature, history and objectives UI, find_similar_cards, reverse cards over MCP are committed on `next-migration` ONLY (not on `main`, not deployed). Last full run: tsc clean, 518 tests passed, Biome 18 warnings, `pnpm build` passes. See "Remaining after the 2026-11-06 wrap-up".
 - Deploy: Vercel production build of `main` was NOT confirmed (the `vercel ls --scope dj-1b1f` check was interrupted). Check it first.
 
+## Session 2026-11-06 (Flash MCP parity spec & agent guidelines)
+- Connected and authenticated Flash MCP (`https://flashmemorize.com/mcp`).
+- Compared all 26 Flash MCP tools against Skola's toolset.
+- Created `docs/spec-mcp-parity-flash.md` (Phase 16) specifying:
+  - `boost_new_today` (ephemeral daily +N cards without altering presets)
+  - `get_limits` & `set_limits` (consolidated daily caps & `goal_date` pacing by deck name)
+  - `archive_deck`, `unarchive_deck`, and path-aware `rename_deck`
+  - `Parent::Child` hierarchical path resolution & auto-parent creation
+  - Multi-tag study sessions (`tags: string[]` filter)
+  - `basic_typed` note type (verbatim spelling/code/formula verification)
+  - Speech synthesis blocks (`front_speech`, `back_speech` with language tags and equation/look cues)
+  - Interactive UI Study Panel endpoints (`panel_*`)
+- Added Phase 16 to `docs/SPEC.md`.
+- Enforced agent rule in `.agent/`: all plans/specs must live as docs in the codebase itself, and consolidated all `CLAUDE.md` and `AGENTS.md` instructions into general agent rules for Gemini and Claude.
+
 ## Session 2026-11-06 (fix nested button hydration error in NavItem / DeckTree)
 Fixed React hydration error `<button> cannot be a descendant of <button>`. In `DeckTree.tsx`, `NavItem` (a `<button>`) rendered `rightElement` containing `IconButton` and expand `<button>`. Updated `NavItem` (`src/components/ui/NavItem.tsx`) to render a container `div.nav-item.nav-item--with-right` with a primary `<button className="nav-item__main">` and sibling `<span className="nav-item__right">` whenever `rightElement` is provided, while keeping the simple `<button>` element when no rightElement is present. Added styles in `src/components/ui/NavItem.css` for `--with-right`, `__main`, focus rings, and `:focus-within` visibility. Added unit tests in `src/components/ui/NavItem.test.tsx`.
 

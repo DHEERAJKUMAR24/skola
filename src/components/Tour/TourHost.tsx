@@ -2,7 +2,6 @@ import { db } from "@/logic/db";
 import { useSetting } from "@/logic/settings/hooks/useSetting";
 import { setSetting } from "@/logic/settings/setSetting";
 import { driver } from "driver.js";
-import "driver.js/dist/driver.css";
 import { useCallback, useEffect, useRef } from "react";
 import { useLocation } from "react-router-dom";
 import "./Tour.css";
@@ -29,6 +28,7 @@ export default function TourHost() {
   const active = useRef<ReturnType<typeof driver> | undefined>(undefined);
 
   const run = useCallback((tour: TourDef) => {
+    import("driver.js/dist/driver.css").catch(() => {});
     active.current?.destroy();
     // Steps whose element is not on screen are dropped so a tour never points at nothing.
     const steps = tour.steps

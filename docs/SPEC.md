@@ -98,6 +98,7 @@ Server (`app/supabase/migrations/20261101000000_init.sql`): `changes` (per-user 
 | 13 Profile instructions | DONE | Synced `#aiInstructions` with a built-in default, Settings, AI assistants tab, `get_instructions` and `set_instructions` (ADR 0013) |
 | 14 Settings sidebar and in-app skills | DONE | Second sidebar, in-app Connect and Skills editor, `/skills/llm.txt` for agents. Skill editor not tested signed in |
 | 15 Master card | CORE DONE in app, MCP tools and skills DONE 2026-11-06 (ADR 0014) | Hierarchy setting and page, pure coverage engine, `master` note type with editor, study view with suggested rating, notes explorer view, deck menu "Create Master Card", card picker. MCP: create_master_card, get_master_card (repurposed name), list_master_cards, update_master_card, master_coverage, suggest_master_rating, delete_master_card (`src/server/mcpMaster.ts`), study sessions and card tools know the type, skills updated (architect, maintainer, tutor, auditor). App UI 2026-11-06: builder page `/master/:noteId`, graph `/graph`, activities (recall sweep, gap hunt, weak-spot drill), deck Masters tab. Not checked in a browser |
+| 16 MCP Parity (Flash) | SPEC DONE (docs/spec-mcp-parity-flash.md) | Parity with Flash MCP: boost_new_today, get_limits, set_limits, archive_deck, unarchive_deck, rename_deck, Parent::Child auto-hierarchy, multi-tag study sessions, basic_typed note type, speech blocks, and interactive study panel tools (panel_*) |
 
 ## 8. Accounts and keys
 

@@ -90,6 +90,35 @@ export class Database extends Dexie {
       });
     // Local only: the bytes of pictures, uploaded to R2 in the background. Not synced.
     this.version(28).stores({ media: "id, uploaded" });
+    // Add updatedAt index to all synced tables so sync.ts can use ranged queries
+    // instead of full table scans. Upgrade stamps any legacy rows that predate the hook.
+    this.version(29)
+      .stores({
+        cards: "id, note, deck, updatedAt",
+        decks: "id, *cards, *notes, *subDecks, *superDecks, updatedAt",
+        notes: "id, deck, sortField, *linkedNotes, *tags, updatedAt",
+        presets: "id, updatedAt",
+        settings: "key, updatedAt",
+        studySessions: "id, deck, day, updatedAt",
+      })
+      .upgrade(async (tx) => {
+        const now = Date.now();
+        for (const tbl of [
+          "cards",
+          "decks",
+          "notes",
+          "presets",
+          "studySessions",
+          "settings",
+        ]) {
+          await tx
+            .table(tbl)
+            .toCollection()
+            .modify((r: { updatedAt?: number }) => {
+              r.updatedAt ??= now;
+            });
+        }
+      });
     installSyncTracking(this);
     this.open();
   }

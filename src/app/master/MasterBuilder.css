@@ -417,7 +417,7 @@
 }
 
 .master-graph__line--entry {
-  border-top: 2px dashed #4ade80;
+  border-top: 2px solid #7c3aed;
 }
 
 .master-graph__body {
@@ -427,160 +427,83 @@
   align-items: start;
 }
 
-/* Canvas */
-.master-graph__svg {
-  width: 100%;
+/* Sigma canvas container + visual overlays */
+.master-graph__canvas-wrap {
+  position: relative;
   aspect-ratio: 1000 / 640;
+  min-height: 300px;
   border-radius: var(--radius-md, 8px);
   overflow: hidden;
-  touch-action: none;
-  cursor: grab;
-  user-select: none;
+  background: #0d1117;
 }
 
-.master-graph__svg:active {
-  cursor: grabbing;
+/* Sigma mounts its WebGL + label canvases here */
+.master-graph__canvas {
+  width: 100%;
+  height: 100%;
 }
 
-.master-graph__bg {
-  fill: #0d1117;
-}
-
-/* Edges */
-.master-graph__edge {
-  stroke: rgba(148, 163, 184, 0.18);
-  stroke-width: 0.8;
-  vector-effect: non-scaling-stroke;
-  transition: stroke 0.15s, stroke-opacity 0.15s;
-}
-
-.master-graph__edge--entry {
-  stroke: #4ade80;
-  stroke-opacity: 0.3;
-  stroke-dasharray: 5 3;
-}
-
-.master-graph__edge--hov {
-  stroke: rgba(255, 255, 255, 0.35);
-  stroke-width: 1.2;
-}
-
-.master-graph__edge--hot {
-  stroke: rgba(255, 255, 255, 0.6);
-  stroke-width: 1.8;
-  stroke-opacity: 1;
-}
-
-.master-graph__edge--entry.master-graph__edge--hot {
-  stroke: #86efac;
-  stroke-opacity: 0.8;
-}
-
-/* Nodes */
-.master-graph__node {
-  cursor: pointer;
-}
-
-/* Blurred ambient glow halo */
-.node-halo {
-  fill: #60a5fa;
-  opacity: 0.12;
-  filter: blur(5px);
+/* Dot-grid background pattern + radial vignette, non-interactive */
+.master-graph__overlay {
+  position: absolute;
+  inset: 0;
   pointer-events: none;
-  transition: opacity 0.2s;
+  /* Dot grid */
+  background-image: radial-gradient(
+    circle,
+    rgba(255, 255, 255, 0.07) 1px,
+    transparent 1px
+  );
+  background-size: 40px 40px;
+  /* Vignette on top of the grid */
+  -webkit-mask-image: radial-gradient(
+    ellipse 100% 100% at 50% 50%,
+    black 40%,
+    transparent 100%
+  );
+  mask-image: radial-gradient(
+    ellipse 100% 100% at 50% 50%,
+    black 40%,
+    transparent 100%
+  );
 }
 
-.master-graph__node--master .node-halo {
-  fill: #4ade80;
+/* Alternative vignette via pseudo-element (keeps grid visible) */
+.master-graph__overlay::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    ellipse at 50% 50%,
+    transparent 40%,
+    rgba(0, 0, 0, 0.6) 100%
+  );
 }
 
-.master-graph__node:hover .node-halo,
-.master-graph__node.is-hovered .node-halo {
-  opacity: 0.28;
-}
-
-.master-graph__node.is-selected .node-halo {
-  opacity: 0.35;
-}
-
-/* Main node circle */
-.node-core {
-  fill: url(#mgr-note);
-  stroke: rgba(255, 255, 255, 0.2);
-  stroke-width: 1;
-  transition: transform 0.15s ease-out;
-  transform-origin: center;
-}
-
-.master-graph__node--master .node-core {
-  fill: url(#mgr-master);
-  stroke-width: 1.5;
-}
-
-.master-graph__node.is-outside .node-core {
-  opacity: 0.45;
-  stroke-dasharray: 3 2;
-}
-
-.master-graph__node.is-selected .node-core {
-  stroke: rgba(255, 255, 255, 0.9);
-  stroke-width: 2;
-}
-
-.master-graph__node.is-dim {
-  opacity: 0.12;
-  transition: opacity 0.3s;
-}
-
-/* Hover: scale up + drop-shadow glow on the whole node group */
-.master-graph__node:hover .node-core,
-.master-graph__node.is-hovered .node-core {
-  transform: scale(1.25);
-}
-
-.master-graph__node:hover,
-.master-graph__node.is-hovered {
-  filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.3));
-}
-
-.master-graph__node.is-selected {
-  filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.5));
-}
-
-/* Pulsing ring for the selected node */
-.node-ring {
-  fill: none;
-  stroke: rgba(255, 255, 255, 0.7);
-  stroke-width: 1.5;
+/* Pulsing ring rendered as a positioned div over sigma's canvas */
+.master-graph__ring {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(255, 255, 255, 0.7);
   pointer-events: none;
-  transform-origin: center;
   animation: graph-pulse 1.8s ease-out infinite;
 }
 
 @keyframes graph-pulse {
   0% {
-    transform: scale(1);
-    stroke-opacity: 0;
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 0;
   }
   8% {
-    stroke-opacity: 0.65;
+    opacity: 0.65;
   }
   100% {
-    transform: scale(3.2);
-    stroke-opacity: 0;
+    transform: translate(-50%, -50%) scale(3.2);
+    opacity: 0;
   }
-}
-
-/* Labels — white with dark outline for legibility on the dark canvas */
-.master-graph__node text {
-  font-size: 11px;
-  fill: rgba(226, 232, 240, 0.88);
-  pointer-events: none;
-  paint-order: stroke fill;
-  stroke: rgba(0, 0, 0, 0.8);
-  stroke-width: 3px;
-  stroke-linejoin: round;
-  user-select: none;
 }
 
 /* Panel */

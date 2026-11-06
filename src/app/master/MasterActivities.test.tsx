@@ -80,13 +80,12 @@ describe("graph view", () => {
     await linkNotes(n1, n2);
 
     render(
-      <MemoryRouter initialEntries={["/graph"]}>
+      <MemoryRouter initialEntries={[`/graph?focus=${n1}`]}>
         <MasterGraphView />
       </MemoryRouter>
     );
-    const alpha = await screen.findByRole("button", { name: "Alpha card" });
     expect(await screen.findByText("2 dots, 1 lines")).toBeInTheDocument();
-    fireEvent.click(alpha);
+    expect(await screen.findByText("Alpha card")).toBeInTheDocument();
     const remove = await screen.findByRole("button", { name: "Remove" });
     fireEvent.click(remove);
     await waitFor(async () => {
