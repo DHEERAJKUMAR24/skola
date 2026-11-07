@@ -37,6 +37,7 @@ function LearnView() {
     selectedPrompt,
     showPrompts,
     answerCard,
+    skipCard,
     togglePrompt,
     closeQuickAdd,
   } = useLearnSession({
@@ -117,7 +118,7 @@ function LearnView() {
             )}
           </div>
         </div>
-        <LearnViewFooter controller={controller} answer={answerCard} />
+        <LearnViewFooter controller={controller} answer={answerCard} skip={skipCard} />
 
         {debouncedFinish && (
           <Modal

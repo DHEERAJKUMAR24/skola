@@ -76,6 +76,11 @@ export function useLearnSession({
     [selectedPrompt]
   );
 
+  const skipCard = useCallback(() => {
+    controller.requestNextCard();
+    setSelectedPrompt(null);
+  }, [controller]);
+
   const closeQuickAdd = useCallback(() => {
     setSelectedPrompt(null);
   }, []);
@@ -86,6 +91,7 @@ export function useLearnSession({
     selectedPrompt,
     showPrompts: cardShowsMastery(),
     answerCard,
+    skipCard,
     togglePrompt,
     closeQuickAdd,
   };

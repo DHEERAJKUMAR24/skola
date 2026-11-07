@@ -10,12 +10,35 @@
   padding-bottom: calc(var(--spacing-md) + 0 * var(--safe-area-bottom));
 }
 
+.learn-view-footer__content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-xs, 6px);
+  width: 100%;
+  max-width: var(--content-width);
+}
+
 .learn-view-footer__buttons {
   display: flex;
   flex-direction: row;
   width: 100%;
-  max-width: var(--content-width);
   gap: var(--spacing-md);
+}
+
+.learn-view-footer__skip {
+  background: none;
+  border: none;
+  padding: 2px 8px;
+  font-size: 0.75rem;
+  color: var(--theme-neutral-400, #888);
+  cursor: pointer;
+  border-radius: 4px;
+  transition: color 0.15s;
+}
+
+.learn-view-footer__skip:hover {
+  color: var(--theme-neutral-600, #aaa);
 }
 
 @media (max-width: 768px) {

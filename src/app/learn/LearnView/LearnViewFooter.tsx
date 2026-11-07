@@ -17,6 +17,7 @@ const MINUTE_IN_MILLISECONDS = 1000 * 60;
 interface LearnViewFooterProps {
   controller: LearnController;
   answer: Function;
+  skip: () => void;
 }
 
 function timeStringForRating(rating: Grade, controller: LearnController) {
@@ -45,12 +46,13 @@ function timeStringForRating(rating: Grade, controller: LearnController) {
   }
 }
 
-function LearnViewFooter({ controller, answer }: LearnViewFooterProps) {
+function LearnViewFooter({ controller, answer, skip }: LearnViewFooterProps) {
   const [enableHardAndEasy] = useSetting("#learn_enableHardAndEasy");
 
   const baseHotkeys: [string, () => void][] = [
     ["1", () => controller.showingAnswer && answer(Rating.Again)],
     ["3", () => controller.showingAnswer && answer(Rating.Good)],
+    ["s", () => skip()],
     [
       "Space",
       () =>
@@ -80,46 +82,56 @@ function LearnViewFooter({ controller, answer }: LearnViewFooterProps) {
 
   return (
     <Group className={BASE} justify="center">
-      {controller.showingAnswer ? (
-        <div className={BASE + "__buttons"}>
-          <AnswerCardButton
-            label={t("learning.rate-again")}
-            timeInfo={timeStringForRating(Rating.Again, controller)}
-            color="red"
-            action={() => answer(Rating.Again)}
-          />
-          {enableHardAndEasy && (
+      <div className={BASE + "__content"}>
+        {controller.showingAnswer ? (
+          <div className={BASE + "__buttons"}>
             <AnswerCardButton
-              label={t("learning.rate-hard")}
-              timeInfo={timeStringForRating(Rating.Hard, controller)}
-              color="yellow"
-              action={() => answer(Rating.Hard)}
+              label={t("learning.rate-again")}
+              timeInfo={timeStringForRating(Rating.Again, controller)}
+              color="red"
+              action={() => answer(Rating.Again)}
             />
-          )}
-          <AnswerCardButton
-            label={t("learning.rate-good")}
-            timeInfo={timeStringForRating(Rating.Good, controller)}
-            color="green"
-            action={() => answer(Rating.Good)}
-          />
-          {enableHardAndEasy && (
+            {enableHardAndEasy && (
+              <AnswerCardButton
+                label={t("learning.rate-hard")}
+                timeInfo={timeStringForRating(Rating.Hard, controller)}
+                color="yellow"
+                action={() => answer(Rating.Hard)}
+              />
+            )}
             <AnswerCardButton
-              label={t("learning.rate-easy")}
-              timeInfo={timeStringForRating(Rating.Easy, controller)}
-              color="blue"
-              action={() => answer(Rating.Easy)}
+              label={t("learning.rate-good")}
+              timeInfo={timeStringForRating(Rating.Good, controller)}
+              color="green"
+              action={() => answer(Rating.Good)}
             />
-          )}
-        </div>
-      ) : (
-        <Button
-          onClick={controller.showAnswer}
-          style={{ height: "2.5rem" }}
-          variant="primary"
+            {enableHardAndEasy && (
+              <AnswerCardButton
+                label={t("learning.rate-easy")}
+                timeInfo={timeStringForRating(Rating.Easy, controller)}
+                color="blue"
+                action={() => answer(Rating.Easy)}
+              />
+            )}
+          </div>
+        ) : (
+          <Button
+            onClick={controller.showAnswer}
+            style={{ height: "2.5rem" }}
+            variant="primary"
+          >
+            {t("learning.show-answer")}
+          </Button>
+        )}
+        <button
+          className={BASE + "__skip"}
+          onClick={skip}
+          type="button"
+          title={t("learning.skip-hint", "Press S to skip")}
         >
-          {t("learning.show-answer")}
-        </Button>
-      )}
+          {t("learning.skip", "Skip")}
+        </button>
+      </div>
     </Group>
   );
 }
