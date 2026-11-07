@@ -1,3 +1,5 @@
+import type { Deck } from "../logic/deck/deck";
+import { isPausedDeck, withoutPaused } from "../logic/deck/priority";
 import { masterToText } from "../logic/master/masterModel";
 import type { Db } from "./db";
 import { pushRows } from "./sync";
@@ -152,6 +154,15 @@ export function deckScope(decks: Row[], deckId?: string): Set<string> {
 
 export const studyable = (c: Row, now: number) =>
   !c.suspended && !(c.buriedUntil && c.buriedUntil > now);
+
+/** Studyable cards minus those of paused decks (or all of them when nothing else is left), as the app does. */
+export function studyCards(cards: Row[], decks: Row[], now: number): Row[] {
+  const byId = new Map(decks.map((d) => [d.id, d as Deck]));
+  return withoutPaused(
+    cards.filter((c) => studyable(c, now)) as (Row & { deck: string })[],
+    (id) => isPausedDeck(byId.get(id), byId)
+  );
+}
 
 export async function snapshot({ db, userId }: Ctx, deckId?: string) {
   const [decks, cards, notes] = await Promise.all([

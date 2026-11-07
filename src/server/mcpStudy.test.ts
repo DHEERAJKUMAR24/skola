@@ -510,4 +510,54 @@ describe("study sessions", () => {
     );
     expect((await sessionRow(a.user, s.session_id)).turn).toBe(1);
   });
+
+  describe("paused decks", () => {
+    async function tree() {
+      const { user, deck } = await setup();
+      const sub = (
+        await call(user, "create_deck", { name: "Sub", parent_id: deck })
+      ).id;
+      const leaf = (
+        await call(user, "create_deck", { name: "Leaf", parent_id: sub })
+      ).id;
+      const [a] = await addBasic(user, deck, [["top", "1"]]);
+      const [b] = await addBasic(user, sub, [["sub", "2"]]);
+      const [c] = await addBasic(user, leaf, [["leaf", "3"]]);
+      for (const id of [a, b, c]) await makeDue(user, id);
+      return { user, deck, sub, leaf, a, b, c };
+    }
+    const served = async (user: string, args: object) => {
+      const ids: string[] = [];
+      let s = await call(user, "start_study_session", args);
+      const sid = s.session_id;
+      while (!s.done) {
+        ids.push(s.card_id);
+        s = await call(user, "next_card", { session_id: sid, skip: true });
+      }
+      return ids;
+    };
+
+    it("skips a paused sub-deck and its children, in sessions and get_due_cards", async () => {
+      const t = await tree();
+      await call(t.user, "update_deck", { deck_id: t.sub, paused: true });
+      expect(await served(t.user, { deck_id: t.deck })).toEqual([t.a]);
+      const due = await call(t.user, "get_due_cards", { deck_id: t.deck });
+      expect(due.map((c: any) => c.id)).toEqual([t.a]);
+    });
+
+    it("serves everything when every card sits in a paused deck", async () => {
+      const t = await tree();
+      await call(t.user, "update_deck", { deck_id: t.deck, paused: true });
+      expect((await served(t.user, {})).sort()).toEqual([t.a, t.b, t.c].sort());
+      expect((await call(t.user, "get_due_cards")).length).toBe(3);
+    });
+
+    it("serves a deck_id that is itself paused", async () => {
+      const t = await tree();
+      await call(t.user, "update_deck", { deck_id: t.sub, paused: true });
+      expect((await served(t.user, { deck_id: t.sub })).sort()).toEqual(
+        [t.b, t.c].sort()
+      );
+    });
+  });
 });

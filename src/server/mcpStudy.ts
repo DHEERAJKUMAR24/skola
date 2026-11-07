@@ -9,6 +9,7 @@ import {
   noteFieldMap,
   snapshot,
   str,
+  studyCards,
   studyable,
 } from "./mcpData";
 import { masterSuggestion } from "./mcpMaster";
@@ -219,9 +220,9 @@ async function emptyReason(ctx: Ctx, s: Sess) {
       reason: "limit_reached",
       message: `The ${s.card_limit} card limit of this session is reached. Call end_session.`,
     };
-  const { cards } = await snapshot(ctx, s.deck_id ?? undefined);
-  const upcoming = cards
-    .filter((c) => studyable(c, ctx.now) && c.model?.state !== NEW)
+  const { cards, decks } = await snapshot(ctx, s.deck_id ?? undefined);
+  const upcoming = studyCards(cards, decks, ctx.now)
+    .filter((c) => c.model?.state !== NEW)
     .map((c) => ms(c.model?.due))
     .filter((d) => d > ctx.now)
     .sort((a, b) => a - b);
@@ -240,9 +241,11 @@ async function emptyReason(ctx: Ctx, s: Sess) {
 
 async function pickNext(ctx: Ctx, s: Sess): Promise<Row | null> {
   if (s.reviewed + s.skipped >= s.card_limit) return null;
-  const { cards } = await snapshot(ctx, s.deck_id ?? undefined);
+  const { cards, decks } = await snapshot(ctx, s.deck_id ?? undefined);
   const skipped = new Set(s.seen);
-  const live = cards.filter((c) => studyable(c, ctx.now) && !skipped.has(c.id));
+  const live = studyCards(cards, decks, ctx.now).filter(
+    (c) => !skipped.has(c.id)
+  );
   const due = live
     .filter((c) => c.model?.state !== NEW && ms(c.model?.due) <= ctx.now)
     .sort((x, y) => ms(x.model.due) - ms(y.model.due));

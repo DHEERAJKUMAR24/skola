@@ -9,6 +9,7 @@ import {
   num,
   snapshot,
   str,
+  studyCards,
   studyable,
 } from "./mcpData";
 import { deckPathOf } from "./mcpDecks";
@@ -86,14 +87,9 @@ const READ_TOOLS: Tool[] = [
       properties: { deck_id: { type: "string" }, limit: { type: "number" } },
     },
     async run(ctx, a) {
-      const { cards, notes } = await snapshot(ctx, str(a, "deck_id"));
-      return cards
-        .filter(
-          (c) =>
-            studyable(c, ctx.now) &&
-            c.model?.state !== NEW &&
-            ms(c.model?.due) <= ctx.now
-        )
+      const { cards, decks, notes } = await snapshot(ctx, str(a, "deck_id"));
+      return studyCards(cards, decks, ctx.now)
+        .filter((c) => c.model?.state !== NEW && ms(c.model?.due) <= ctx.now)
         .sort((x, y) => ms(x.model.due) - ms(y.model.due))
         .slice(0, num(a, "limit", 20, 100))
         .map((c) => cardView(c, notes));
