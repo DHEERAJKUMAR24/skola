@@ -20,11 +20,13 @@ import {
   IconCode,
   IconEdit,
   IconHistory,
+  IconInfoCircle,
   IconTrash,
 } from "@tabler/icons-react";
 import { t } from "i18next";
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import CardInfoModal from "../CardInfoModal/CardInfoModal";
 import DebugCardModal from "../DebugCardModal/DebugCardModal";
 import CardSchedulingModal from "./CardSchedulingModal";
 import NoteHistoryModal from "./NoteHistoryModal";
@@ -40,6 +42,7 @@ function CardMenu({ card, onDelete, onHidden }: CardMenuProps) {
   const navigate = useNavigate();
 
   const [debugModalOpened, setDebugModalOpened] = useState<boolean>(false);
+  const [cardInfoOpened, setCardInfoOpened] = useState<boolean>(false);
   const [statisticsModalOpened, setStatisticsModalOpened] =
     useState<boolean>(false);
   const [schedulingOpened, setSchedulingOpened] = useState<boolean>(false);
@@ -47,6 +50,7 @@ function CardMenu({ card, onDelete, onHidden }: CardMenuProps) {
 
   const showShortcutHints = useShowShortcutHints();
   useHotkeys([
+    ["i", () => setCardInfoOpened(true)],
     ["s", () => setStatisticsModalOpened(true)],
     ["o", () => setSchedulingOpened(true)],
     ["shift+d", () => setDebugModalOpened(true)],
@@ -98,6 +102,13 @@ function CardMenu({ card, onDelete, onHidden }: CardMenuProps) {
           </MenuItem>
         )}
         <MenuItem
+          leftSection={<IconInfoCircle size={16} />}
+          rightSection={showShortcutHints && <Kbd>i</Kbd>}
+          onClick={() => setCardInfoOpened(true)}
+        >
+          Card info
+        </MenuItem>
+        <MenuItem
           leftSection={<IconChartBar size={16} />}
           rightSection={showShortcutHints && <Kbd>s</Kbd>}
           onClick={() => setStatisticsModalOpened(true)}
@@ -141,6 +152,11 @@ function CardMenu({ card, onDelete, onHidden }: CardMenuProps) {
           {t("note.menu.delete")}
         </MenuItem>
       </Menu>
+      <CardInfoModal
+        opened={cardInfoOpened}
+        setOpened={setCardInfoOpened}
+        card={card}
+      />
       <CardStatisticsModal
         opened={statisticsModalOpened}
         setOpened={setStatisticsModalOpened}
