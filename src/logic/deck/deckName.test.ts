@@ -22,4 +22,14 @@ describe("deck names", () => {
     await expect(updateDeck(id, "A::B")).rejects.toThrow("::");
     expect((await db.decks.get(id))?.name).toBe("Ok");
   });
+
+  it("updateDeck validates only when the name changes", async () => {
+    const id = await newDeck("Ok");
+    await db.decks.update(id, { name: "A::B" }); // legacy name
+    await updateDeck(id, "A::B", "new description");
+    const d = await db.decks.get(id);
+    expect(d?.name).toBe("A::B");
+    expect(d?.description).toBe("new description");
+    await expect(updateDeck(id, "C::D")).rejects.toThrow("::");
+  });
 });

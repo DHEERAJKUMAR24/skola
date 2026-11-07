@@ -97,11 +97,17 @@ function DeckModal({
 
   const parsed = useMemo(() => fromExamForm(exam), [exam]);
   const examErrors = "errors" in parsed ? parsed.errors : {};
-  const ruleError = validateDeckName(nameValue.trim());
-  const nameError = !nameTouched
-    ? undefined
-    : nameValue.trim() === ""
-      ? "Give the deck a name"
+  const trimmedName = nameValue.trim();
+  // An unchanged legacy name is not re-validated in edit mode.
+  const ruleError =
+    mode === "edit" && trimmedName === deck?.name
+      ? null
+      : validateDeckName(trimmedName);
+  const nameError =
+    trimmedName === ""
+      ? nameTouched
+        ? "Give the deck a name"
+        : undefined
       : ruleError
         ? t("deck.name-rule", { reason: ruleError })
         : undefined;

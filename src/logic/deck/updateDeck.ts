@@ -10,9 +10,10 @@ export async function updateDeck(
   color?: ColorIdentifier,
   fsrs?: Partial<DeckOptions>
 ): Promise<void> {
-  const nameError = validateDeckName(name);
-  if (nameError) throw Error(nameError);
   const current = await db.decks.get(id);
+  // Legacy names (with "::" or over 100 chars) stay editable until renamed.
+  const nameError = name === current?.name ? null : validateDeckName(name);
+  if (nameError) throw Error(nameError);
   await db.decks.update(id, {
     name,
     description,
