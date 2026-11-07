@@ -1,6 +1,6 @@
 # Skola — Feature Inspiration Shortlist
 
-- **Status:** PARKED — 2026-11-07. Reviewed; not being implemented now. Revisit after Phases 16–21.
+- **Status:** PARKED — 2026-11-07. Reviewed; not being implemented now. Revisit after Phases 16 to 24.
 - **Source:** Awesome FSRS catalogue (GitHub). Feature descriptions from catalogue, not hands-on testing.
 
 ---

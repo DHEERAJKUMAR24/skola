@@ -1,10 +1,12 @@
 # Skola++ vs Flash: Deep Comparative Analysis & Gap-Closing Specification
 
-- **Status:** SPEC COMPLETE — all high-priority Flash Rust source files read; 3 sweep sessions 2026-11-07; Sections 11.1–11.23 added; Phases 16–21 specced; ADRs 0016–0035 written; 10 lower-priority files remain (see 11.23)
+- **Status:** SPEC REVIEWED & CORRECTED — 2026-11-07. Architecture review applied: Phase 21 dropped (no polling/cron in Skola), Phase 20 redesigned as client-side, `get_limits` corrected (no review-log access server-side), speech blocks kept optional, `panel_reminders` uses Dexie synced settings, `set_limits` wraps preset system. All high-priority Flash Rust source files read; 3 sweep sessions 2026-11-07; Sections 11.1–11.23 added; Phases 16–20 specced; the ADRs listed in section 10 are proposed placeholders, none is written yet except 0016, which is now the master card decision.
+> **READ FIRST (2026-11-07).** An independent code review found that the Phase 16 to 19 parts of this document assume things that are false about Skola (deck storage, MCP limits, existing auth and media code, existing stats route). The corrected, authoritative designs are `docs/spec-phase-16.md` (Phases 16.1 to 16.3) and `docs/spec-phases-17-20.md` (Phases 17 to 20). Where this document differs, those two win. The tool-by-tool comparison tables and the Flash analysis below remain useful as reference only. Sections 7 (Phases 16 to 19), 9, 10 and 11.1 to 11.22 must not be used as a build spec.
+
 - **Author:** Antigravity Engineering (synthesized from 4-agent deep-recon run)
 - **Date:** 2026-11-07
 - **Supersedes:** `docs/spec-mcp-parity-flash.md` (Phase 16 overview); this document is the authoritative implementation spec
-- **Tracking:** Phases 16–19 in `docs/SPEC.md`
+- **Tracking:** Phases 16 to 20 in `docs/SPEC.md` (21 dropped; Phases 22 to 24 are the owner's own designs, see `docs/README.md`)
 
 ---
 
@@ -33,6 +35,22 @@ Reference repos:
 | Skola++ | 56 | Master cards, K/S objectives, image occlusion, find_similar_cards, skill management, next_card skip, preset management, deck_schedule, set_card_schedule, full audit tooling |
 
 Skola++ already has 2× the MCP surface. The goal is not to shrink to Flash's 26 — it is to add Flash's missing ergonomics while keeping and extending Skola++'s depth.
+
+---
+
+## 2.5 Skola Architecture Constraints
+
+Before reading the gap analysis, these Skola-specific constraints override Flash's design decisions where they conflict:
+
+| Constraint | Rule | Impact on spec |
+|---|---|---|
+| **Local-first** | UI reads/writes Dexie only; server is a sync relay | Stats, "remaining today" counts, and any feature needing live review data must run client-side |
+| **No polling / no cron** | Non-goal N3 (few API calls); no cron job of any kind, not even a daily one | Phase 21 (background job system) dropped; R2 cleanup runs when the server receives the delete (see 11.15) |
+| **Review logs sync** | Review logs do sync: `src/logic/sync.ts` pushes `reviewLogs` by `reviewedAt` (append-only, outside the `updatedAt` tracking in `syncTracking.ts`), and MCP grading writes them too. The server therefore holds every device's reviews up to its last sync. | `get_limits` can report "remaining today" from synced logs, accurate up to each device's last sync (say so in the tool output). Phase 20 stats stay client-side so they work offline. |
+| **Preset system is canonical** | 15-parameter FSRS preset system + per-deck assignment | `set_limits` is a convenience wrapper, not a replacement |
+| **K/S objectives system** | Phase 12: 4×4 dimension mastery tracking with dated evidence | `grading_mode` is a session UX preference; K/S handles competency measurement |
+| **Free-tier budget** | Supabase free, Vercel Hobby | No server-side caching tables for stats; no background workers |
+| **Speech blocks optional** | Skola is not voice-first | Speech blocks stay optional; not forced by schema |
 
 ---
 
@@ -284,7 +302,8 @@ Accepts UUID or `"Medicine::Cardiology"` or `"Medicine / Cardiology"`. Used by a
 
 `get_limits`:
 - No input
-- Reads: account preset defaults + per-deck overrides + today's review counts from review log + boost record
+- Reads: account preset defaults + per-deck overrides + boost record
+- **Skola note:** review logs sync to the server (pushed by `reviewedAt`), so `get_limits` can count today's reviews from them. The count is only as fresh as each device's last sync; report that in the output rather than hiding it.
 - Output:
   ```json
   {
@@ -292,8 +311,7 @@ Accepts UUID or `"Medicine::Cardiology"` or `"Medicine / Cardiology"`. Used by a
     "decks": [{
       "id": "...", "path": "Medicine / Cardiology",
       "new_per_day": null, "reviews_per_day": null,
-      "goal_date": null,
-      "remaining_new_today": 15, "remaining_reviews_today": 142
+      "goal_date": null
     }]
   }
   ```
@@ -303,6 +321,7 @@ Accepts UUID or `"Medicine::Cardiology"` or `"Medicine / Cardiology"`. Used by a
 - Passing `-1` clears deck-specific override, falls back to account defaults
 - Setting `goal_date` updates `exam_date` on the named deck
 - Resolves deck by name or UUID via `resolveDeckPath`
+- **Skola constraint:** `set_limits` is a convenience wrapper — it updates the deck's assigned preset (or creates a one-off deck-level override). It does NOT bypass Skola's preset system; preset management tools (`list_presets`, `update_preset`) remain the full-featured path for all 15 FSRS parameters.
 
 #### 16.1.3 `archive_deck` / `unarchive_deck`
 
@@ -439,7 +458,7 @@ Tool results carry:
 4. **`panel_edit_source`** — Returns raw note fields for modal edit. Input: `card_id`. Output: note fields object.
 5. **`panel_save_edit`** — Commits edit from panel modal. Input: `card_id, fields`. Calls `edit_card` internally.
 6. **`panel_archive`** — Archives or unarchives a **card** (not a deck) from within a study session. Input: `{ session_id, card_id, archived: boolean }`. Calls `set_card_archived(user, card, archived, now)` internally. When set archived=true, card is removed from study queue; undo (archived=false from the same panel action) restores it to the front of the queue. This is a "quiet retire this specific card" action, distinct from `archive_deck`.
-7. **`panel_reminders`** — Saves daily reminder preference. Input: `time: "HH:MM"`, `days: number[]`. Stored in user settings `#reminderConfig`.
+7. **`panel_reminders`** — Saves daily reminder preference. Input: `time: "HH:MM"`, `days: number[]`. Stored in Dexie synced user settings as `#reminderConfig` (synced to other devices). No new server table — this is a user preference, not server state.
 
 #### Signed media URLs for panel content
 
@@ -447,13 +466,15 @@ Panel responses reference card media (images, audio) via short-lived signed URLs
 
 Skola++ spec: add `GET /api/mcp-media/[id]/s` route. On first panel tool call, generate a 32-byte random signing key and store in DB `server_state` table. Sign media URLs with HMAC-SHA256(`key`, `${id}:${expiry_epoch_ms}`). Return these signed URLs in `preload` and card HTML. Reject requests where signature doesn't match or `e` has passed.
 
-**Files:** `src/server/mcpPanel.ts`, `src/server/mcp.ts` (register), `app/api/mcp-media/[id]/s/route.ts` (signed media proxy), `supabase/migrations/YYYYMMDD_server_state.sql`, `supabase/migrations/YYYYMMDD_reminder_config.sql` (if reminder stored server-side).
+**Files:** `src/server/mcpPanel.ts`, `src/server/mcp.ts` (register), `app/api/mcp-media/[id]/s/route.ts` (signed media proxy), `supabase/migrations/YYYYMMDD_server_state.sql`. No `reminder_config` migration — reminders go in Dexie synced settings.
 
 **Tests:** `src/server/mcpPanel.test.ts` (simulated MCP client callback flow).
 
 ---
 
-### Phase 17 — Anki Import / Export
+### Phase 17 — Anki Import / Export (optional, later)
+
+> Not gap-closing: this is a separate product feature. Do it only after Phases 16 and 20, and only if the owner wants it.
 
 This is the highest-effort single gap. Flash's implementation is Rust + `zip` + `rusqlite`. Skola's would be TypeScript + `jszip` + `sql.js` (SQLite in WASM).
 
@@ -508,7 +529,9 @@ Steps:
 
 ---
 
-### Phase 18 — Security & Auth Hardening
+### Phase 18 — Security & Auth Hardening (optional, later)
+
+> Not gap-closing: this is a separate product feature. Do it only after Phases 16 and 20, and only if the owner wants it.
 
 #### 18.1 WebAuthn / Passkeys
 
@@ -543,7 +566,9 @@ Existing R2 uploads remain valid; new uploads use content-addressed scheme.
 
 ---
 
-### Phase 19 — Multi-user Invite & Admin
+### Phase 19 — Multi-user Invite & Admin (optional, later)
+
+> Not gap-closing: this is a separate product feature. Do it only after Phases 16 and 20, and only if the owner wants it.
 
 **File:** `app/api/invite/route.ts`, `src/server/auth.ts`
 
@@ -621,6 +646,8 @@ function gradingInstruction(mode: "silent" | "announce" | "self_grade"): string 
 ```
 
 Add a Settings > Study tab picker for grading mode. Default: `"silent"` — matching Flash's actual default (`GradingMode::Silent` is `#[default]` in `settings.rs`). Silent keeps scheduling invisible; users can opt into announce or self_grade.
+
+**Skola note:** `grading_mode` is a session-level UX preference, not an assessment framework. Skola's K/S objectives system (Phase 12) handles multi-dimensional mastery tracking with dated evidence. These two are complementary — `grading_mode` governs how the AI narrates a study session; K/S governs competency measurement.
 
 ---
 
@@ -785,44 +812,33 @@ The `recorded: false` case in `panel_grade` is important: if the AI already grad
 
 ---
 
-### 9.6 Speech Blocks Marked REQUIRED in Schema
+### 9.6 Speech Blocks — Optional in Schema
 
 **Flash source:** `args.rs:235–249` (`speech_fields_required` transform)
 
-Flash uses a JSON Schema transform that marks `front_speech` and `back_speech` as **required** in the schema advertised to AI clients — even though the server accepts cards without them. This ensures that any AI that generates cards via `create_cards` ALWAYS produces speech blocks.
+Flash marks `front_speech` and `back_speech` as **required** in its JSON Schema. This forces every AI to generate speech blocks for every card.
 
-```rust
-fn speech_fields_required(schema: &mut schemars::Schema) {
-    // adds "front_speech" and "back_speech" to the "required" array
-}
+**Skola decision: keep speech blocks optional.**
 
-#[schemars(transform = speech_fields_required)]
-pub struct NewCard { ... }
-```
+Flash is voice-first by product design. Skola is not. Making speech blocks required forces every card-creation call to include speech arrays regardless of whether the user has a voice assistant. This adds friction with no benefit for the majority of users.
 
-The practical effect: Claude, ChatGPT, and Grok see `front_speech` and `back_speech` as required fields. They generate speech blocks for every card they create. Cards are voice-ready by default.
-
-**Skola++ spec:**
-
-In `add_cards` schema, mark `front_speech` and `back_speech` as required (after Phase 16.2 adds them). Use the TypeScript JSON Schema equivalent:
+Speech blocks in Skola are **optional** fields in `add_cards` and `edit_card`. Users who want voice-ready cards by default can configure the `skola-card-architect` skill to always include them. Voice-first users can set a custom AI instruction to require them.
 
 ```typescript
-// In mcpNotes.ts - add_cards inputSchema
+// In mcpNotes.ts - add_cards inputSchema — speech is optional
 {
   "type": "object",
   "properties": {
     "front_speech": {
-      "description": "SPEECH_NOTE...",
+      "description": "Optional speech blocks for voice assistants. Include only when the user has a voice context or requests it.",
       "type": "array",
       "items": { "oneOf": [{"$ref": "#/$defs/SayBlock"}, {"$ref": "#/$defs/CueBlock"}] }
     },
     "back_speech": { ... }
   },
-  "required": ["deck_id", "cards", "front_speech", "back_speech"]  // ← mark as required
+  "required": ["deck_id", "cards"]  // ← speech is NOT required
 }
 ```
-
-The server accepts cards without them (no validation failure), but the schema requirement ensures AIs produce them.
 
 ---
 
@@ -941,18 +957,17 @@ Add these phases to `docs/SPEC.md`:
 |---|---|---|
 | 16.1 | Deck ergonomics & pacing (MCP backend) + `list_tags` MCP tool | SPEC DONE 2026-11-07 |
 | 16.2 | Study & note enhancements (typed input, `blank` cue, language tags, `speech_by`) | SPEC DONE 2026-11-07 |
-| 16.3 | MCP UI panel bridge + signed media proxy + DB-backed sessions | SPEC DONE 2026-11-07 |
-| 17 | Anki .apkg import/export + CSV import + revlog replay (`progress` option) | SPEC DONE 2026-11-07 |
-| 18 | Security & auth hardening + review_log immutability + `source` + `answer_ms` migration | SPEC DONE 2026-11-07 |
-| 19 | Multi-user invite | SPEC DONE 2026-11-07 |
-| 20 | Stats & analytics dashboard (streak, heatmap, retention %, forecast) | SPEC DONE 2026-11-07 |
-| 21 | Background job system (Postgres-backed, `JOB_DELETE_BLOBS`, future optimizer + reminders) | SPEC DONE 2026-11-07 |
+| 16.3 | MCP UI panel bridge + signed media proxy | SPEC DONE 2026-11-07 |
+| 17 | Anki .apkg import/export + CSV import + revlog replay (`progress` option) | OPTIONAL, LATER |
+| 18 | Security & auth hardening + `source` + `answer_ms` migration | OPTIONAL, LATER |
+| 19 | Multi-user invite | OPTIONAL, LATER |
+| 20 | Stats & analytics dashboard — **client-side Dexie** (streak, heatmap, retention %, forecast) | SPEC DONE 2026-11-07 (revised: no server route) |
 
 ---
 
-## 10. ADR References
+## 10b. ADR References
 
-New decisions needed:
+**ADR 0016 is now taken** (`adr/0016-master-card-lens-over-cards.md`), so the placeholders below shift up by one when they are written. ADR numbers below (0016 to 0035) are **proposed placeholders**, not accepted decisions. The repo's ADRs stop at 0015 (and 0006 and 0007 are each used twice). Number them only when each is written and accepted with `docs/adr/template.md`.
 
 - **ADR 0016:** `Parent::Child` path syntax — prefer `::` separator over `/` to avoid ambiguity with deck names containing slashes. Auto-create missing ancestors silently (no error, only report what was created).
 - **ADR 0017:** Card history retention — extend to 90 days / 20 versions to match Flash parity. Storage cost is negligible (text only, no images in history).
@@ -961,14 +976,14 @@ New decisions needed:
 - **ADR 0020:** Anki import strategy — use `sql.js` (WASM SQLite) for `.apkg` parsing server-side in a Vercel function; cap at 100 MB; skip unsupported note types with a report.
 - **ADR 0021:** WebAuthn adoption — add alongside email+password (not replace); use `@simplewebauthn` library; passkeys stored per-device in new table.
 - **ADR 0022:** MCP error code format — adopt machine-readable `code` string in error `data` matching Flash's vocabulary (`no_deck`, `not_found`, `over_cap`, `confirmation_expired`, `confirmation_target_changed`, `confirmation_target_mismatch`, `confirmation_invalid`, `too_many_pending_confirmations`, `internal`); all Skola MCP errors must be `invalid_params` or `internal_error` JSON-RPC, never raw HTTP codes.
-- **ADR 0023:** Stats dashboard — build as a new page `/#/stats` backed by server-computed aggregates (not client-side Dexie scan); streak, heatmap, and retention % require server-side query over review log.
+- **ADR 0023:** Stats dashboard — build as a new page `/#/stats` using **client-side Dexie queries only** (no server route). Review logs do sync, but computing locally keeps the page offline-capable; server-side computation is not possible without syncing raw review logs, which is explicitly out of scope. All stat logic lives in `src/logic/stats.ts`, testable with fake-indexeddb.
 - **ADR 0024:** Paced deck budget isolation — new cards from a deck with an exam date draw from a per-deck slot only, never consuming the account-wide new-card pool; non-paced decks share the global pool.
-- **ADR 0025:** Review log immutability — Postgres trigger prevents UPDATE/DELETE on `review_log`; only user-cascade delete is permitted. This is the FSRS audit trail and must be append-only.
-- **ADR 0026:** Deck path storage — evaluate switching from `parent_id` UUID references to path-string storage (`"Bio::Cells"`) matching Flash's approach. Path strings make `rename_deck` with re-parenting a single string replace; UUID approach requires recursively updating all descendant `parent_id` values.
+- **(dropped) review-log immutability trigger:** the server has no `review_log` table; review logs are rows in `changes`, and append-only behaviour is already N1.
+- **Open question (not decided):** Deck path storage — evaluate switching from `parent_id` UUID references to path-string storage (`"Bio::Cells"`) matching Flash's approach. Path strings make `rename_deck` with re-parenting a single string replace; UUID approach requires recursively updating all descendant `parent_id` values.
 - **ADR 0027:** `dropped_slots` for cloze — when a cloze deletion is removed, add its index to `dropped_slots` on the note rather than renumbering remaining slots. Preserves card ordinal stability for existing review history.
 - **ADR 0028:** CSV import — plain text only (no HTML); `front`, `back` required, `tags` semicolon-or-comma, `deck` as `Parent::Child` path. No special handling of cloze syntax in CSV (import as basic).
 - **ADR 0029:** Anki export scheduling — reset all scheduling fields to 0 on export (cards appear as "new" in Anki). Do NOT attempt to serialize FSRS state into Anki fields; they are incompatible algorithms.
-- **ADR 0030:** Background job system — use Postgres-backed job table with 5-second poll, 5-minute lease, `[60s, 5m, 30m, 2h, 12h]` retry backoff, batch size 16; all handlers must be idempotent; `JOB_DELETE_BLOBS` is the only critical core handler; FSRS optimizer and reminders are Phase 20+ extensions.
+- **Background jobs:** not implemented. No cron, polling or workers (non-goal N3). R2 cleanup happens when the server applies a delete, checking that no other note still uses the picture; failures leave an orphan.
 - **ADR 0031:** Media deduplication — SHA-256 hex format (not base64); same file content = same blob key; create new metadata row but skip blob write on duplicate; enforce two caps (byte total + object count) as soft limits returning user-facing errors, not 413.
 - **ADR 0032:** Session security model — 30-day non-sliding sessions; `__Host-` cookie prefix; SHA-256 hash only stored in DB; `change_password` logs out all other sessions; password reset logs out all sessions; `via_link` sessions restricted from sensitive ops.
 - **ADR 0033:** Import `colors` field is a string enum (`"keep" | "clean"`), not a boolean. Aligns with Flash's CommitBody schema.
@@ -985,11 +1000,11 @@ New decisions needed:
 
 ### 11.1 MCP Protocol Details (Phases 16.1 / 16.3)
 
-**Session persistence — DB-backed:** Flash sessions are stored in the database keyed by `hash_token(session_id)`. If a client names a session_id the process never saw (after a restart), `load()` queries the DB and restores it. **Skola++ must do the same** — currently session state is probably in-memory only. Reconnects after server restart will fail unless sessions are persisted.
+**Session persistence: not needed.** Skola's `/mcp` is stateless JSON over POST (no session ids, no SSE), so nothing needs to survive a restart. A dropped connection just starts a new session.
 
 **Body limit — 1 MiB:** Flash enforces `MCP_BODY_LIMIT = 1 MiB` on all MCP requests. Skola should enforce a similar limit to prevent large-payload abuse.
 
-**SSE retry disabled:** Flash sets `sse_retry = None` specifically for Gemini compatibility (Gemini Oct 2026 cannot parse `retry:` frames and drops the connection). Skola should do the same.
+**SSE: not applicable.** Skola replies with plain JSON, so there is no `retry:` frame to worry about.
 
 **Machine-readable error codes:** Flash's `errors.rs` converts every `ServiceError` to a JSON-RPC error where the `data` field carries:
 ```json
@@ -1002,7 +1017,7 @@ Full vocabulary: `no_deck`, `not_found`, `over_cap`, `internal`, `confirmation_t
 
 **Confirmation token scoped to connector client:** Pending confirm tokens are scoped to `ConnectorClientId` (not just `UserId`). Two different AI clients cannot accidentally confirm each other's destructive operations.
 
-**Host allowlist / DNS-rebinding guard:** Flash validates `Host` header against a whitelist derived from `FLASH_BASE_URL`. Skola should add the same guard to `app/api/mcp/route.ts`.
+**Host check:** `origin(req)` already pins the address to `APP_URL` when it is set; confirm that is enough before adding a separate allowlist.
 
 **Per-call telemetry:** Flash logs every tool call with `{tool, detail_code, elapsed_ms, client_name, user_id}`. Skola should add equivalent structured logging for support and analytics.
 
@@ -1160,35 +1175,36 @@ Skola's `list_cards` returns individual card fields but not the linked note + si
 
 ### 11.9 Stats & Analytics Dashboard (Phase 20)
 
-From `api/stats.rs` — Flash has a full study analytics REST endpoint that has **no MCP equivalent**. Skola must build this independently:
+From `api/stats.rs` — Flash has a full study analytics REST endpoint. Flash can compute these server-side because its review log is in SQLite on the server.
 
-**Data returned by `/stats`:**
+**Skola choice:** review logs sync, so the server could compute these, but stats are computed **client-side from Dexie** so the page works offline and needs no server route.
+
+**Data to show (same shape as Flash, computed locally):**
 
 ```typescript
 interface StudyStats {
-  retention_pct: number | null;    // overall card retention %
-  streak: number;                  // current consecutive study day streak
-  longest_streak: number;          // lifetime longest streak
-  daily_avg: number;               // average cards studied per active day
-  days_learned_pct: number;        // % of days since account creation with study activity
-  total_reviews: number;           // all-time review count
-  active_cards: number;            // non-suspended cards
-  mature_cards: number;            // cards with stability > 21 days (≥ "mature" threshold)
-  heat_weeks: HeatCell[][];        // GitHub-style heatmap, intensity 0-4
-  heat_months: MonthSpan[];        // month labels for heatmap x-axis
-  heat_years: number[];            // years with activity (supports ?year= historical view)
-  days: DayCount[];                // last 30 days with percentile bar heights
-  upcoming: DayCount[];            // next 7 days forecast (from FSRS due dates)
+  retention_pct: number | null;    // from reviewLogs: rating>=3 / total (phase_before Review/Relearn)
+  streak: number;                  // consecutive study days ending today (Dexie reviewLogs)
+  longest_streak: number;          // lifetime max streak (computed on demand)
+  daily_avg: number;               // avg reviews per active day
+  total_reviews: number;           // reviewLogs.count()
+  active_cards: number;            // cards not suspended
+  mature_cards: number;            // cards with scheduledDays > 21
+  heat_weeks: HeatCell[][];        // GitHub-style heatmap from reviewLogs
+  upcoming: DayCount[];            // next 7 days forecast from card due dates (Dexie cards)
 }
 ```
 
-**Streak tracking:** A "study day" is any day where at least one review was recorded. Streak breaks if no review on a day (by user's local study day boundary). Both current and lifetime longest are stored and updated on each review.
+**Skola++ Phase 20 spec — client-side only:**
+- New UI page `/#/stats` — React component that runs live Dexie queries on mount.
+- All computations in `src/logic/stats.ts` (pure functions over Dexie result arrays, testable with fake-indexeddb).
+- Streak: group reviewLogs by local study day (using `nextDayStartTime` from settings, default 4 AM); count consecutive days ending at today.
+- Heatmap: bucket reviewLogs by local calendar day; intensity 0–4 based on review count percentile.
+- Forecast: query `cards` where `due < now + 7 days` and `state != 0` (not new); group by day.
+- Retention: `reviewLogs.filter(r => r.phase_before >= 2).count` → `rating >= 3` ratio.
+- No server route, no Postgres table, no cron. Offline-capable by design.
 
-**Skola++ Phase 20 spec:**
-- New Postgres table `user_stats_cache(user_id, date, streak, longest_streak, total_reviews, active_cards, mature_cards, heatmap_json)` — recomputed nightly or on first daily study.
-- New route `app/api/stats/route.ts` — queries review log + card table.
-- New UI `/#/stats` — full dashboard with heatmap (use a React heatmap library), streak counter, card counts, forecast chart.
-- Streak must be computed server-side using the user's `day_cutoff_hour` and `timezone` settings.
+**Open:** If the user wants stats visible across devices before they open the app (e.g., a server-rendered dashboard), a lightweight "stats sync" (pushing daily aggregates, not raw logs) could be added as a future ADR. Not needed for Phase 20.
 
 ---
 
@@ -1309,25 +1325,23 @@ From `flash-store/src/migrations.rs` — behavioral assumptions embedded in the 
 
 ---
 
-### 11.15 Background Job Architecture (jobs.rs)
+### 11.15 Background Job Architecture (jobs.rs) — NOT APPLICABLE TO SKOLA
 
-Flash uses a durable background job system that Skola must replicate for media cleanup, import processing, and future FSRS optimization.
+Flash uses a 5-second Postgres poll with leases and retry backoff (`[60s, 5m, 30m, 2h, 12h]`). Its core handlers are `JOB_DELETE_BLOBS` (R2 orphan cleanup) and `JOB_OAUTH_CODE_CHECK` (expire stale OAuth codes).
 
-**Job worker behavior:**
-- Poll every **5 seconds** (`POLL = 5s`) or immediately on `jobs_wake.notify_one()` wakeup
-- Batch size: **16 jobs per pass**; if batch was full, loop immediately without sleeping
-- Lease duration: **5 minutes** (`LEASE_MS = 5 min`) — a claimed job is auto-retried by another worker after 5 min if the handler crashes
-- Retry backoff: `[60s, 5m, 30m, 2h, 12h]` — max **6 attempts** then permanent fail
-- **All handlers must be idempotent** — a handler may run twice if the worker dies mid-execution; check if work was already done before re-executing
+**Skola decision: do not implement a background job system.**
 
-**Core registered handlers:**
-1. `JOB_DELETE_BLOBS` — cleans up orphaned media blobs (queued when deck/card deleted)
-2. `JOB_OAUTH_CODE_CHECK` — expires stale OAuth authorization codes
+Skola's rule (non-goal N3, few API calls, and no cron, polling or background worker of any kind) makes a job system incompatible. Work happens inside the request that needs it.
 
-**FSRS optimizer, streak updater, and notification emails are NOT in the core job system** — they are likely in an extension (`state.ext`). Skola must implement these separately; they are not triggered by the core job loop.
+**Instead, use event-driven cleanup:**
 
-**Skola++ spec (Phase 18 addition):**
-Add a `jobs` table to Postgres with `(id, type, payload_json, attempts, retry_at_ms, lease_expires_ms, failed_at_ms)`. Worker polls every 5 seconds via a setInterval loop in a Next.js background process or Vercel cron. Implement `JOB_DELETE_BLOBS` for R2 cleanup after deck/card deletion. Future: `JOB_FSRS_OPTIMIZE` and `JOB_REMINDER_EMAIL`.
+| Flash job | Skola equivalent |
+|---|---|
+| `JOB_DELETE_BLOBS` | Notes are deleted on the device and reach the server as sync tombstones, so the cleanup runs when the server applies a delete. Pictures are keyed by SHA-256 per user and one picture can serve several notes, so delete the R2 object only when no remaining note references that `media:<sha256>`. If the R2 delete fails, accept an orphan (storage is capped per account); no table, no drain script. |
+| `JOB_OAUTH_CODE_CHECK` | OAuth codes already have `expires_at` column. Stale codes are simply rejected on use — no active cleanup needed. Prune with `DELETE WHERE expires_at < now() - interval '7 days'` on the next auth request (lazy cleanup). |
+| Future: FSRS optimizer | Already client-side WASM — no server job needed. |
+
+**Phase 21 (background job system) is removed from the roadmap.** Reminder emails are also out: a daily digest would need a cron. If reminders are wanted, show them in the app and over MCP only.
 
 ---
 

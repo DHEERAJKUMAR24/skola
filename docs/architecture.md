@@ -4,7 +4,7 @@
 All reads and writes hit Dexie. The UI uses `useLiveQuery`. The server is only a sync relay plus auth. Offline works fully; sync catches up later.
 
 ## Sync
-- Synced tables: `decks`, `cards`, `notes`, `settings`, `presets` (`SYNCED_TABLES` in `src/logic/syncTracking.ts`). Review logs and statistics stay local.
+- Synced tables: `decks`, `cards`, `notes`, `settings`, `presets` (`SYNCED_TABLES` in `src/logic/syncTracking.ts`). Review logs (append-only, pushed by `reviewedAt`) and study sessions sync too; only the legacy `statistics` table stays local.
 - Dexie hooks stamp `updatedAt` on every write and write tombstones on delete.
 - Push is debounced (user setting from 5 s to 15 min; profile avatar shows a countdown ring). Pull is incremental.
 - Server keeps a `changes` table with a per-user `seq`. Table whitelist is in `src/server/sync.ts`.

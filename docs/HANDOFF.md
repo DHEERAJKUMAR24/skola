@@ -9,6 +9,21 @@ Single source of truth for "where are we". Rewrite the sections below at the end
 - After v0.6.0: master card feature, history and objectives UI, find_similar_cards, reverse cards over MCP are committed on `next-migration` ONLY (not on `main`, not deployed). Last full run: tsc clean, 518 tests passed, Biome 18 warnings, `pnpm build` passes. See "Remaining after the 2026-11-06 wrap-up".
 - Deploy: Vercel production build of `main` was NOT confirmed (the `vercel ls --scope dj-1b1f` check was interrupted). Check it first.
 
+## Session 2026-11-07, third part: product design for Phases 22 to 24 (docs only, nothing built or committed)
+
+- Deployed earlier today (separate from this work): `main` pushed; Vercel project `skola-app` under the `zero2hero` account; the production database migrations 20261102 and 20261103 were applied by the owner; the demo-account seed (`pnpm db:seed`) was waiting on a stuck database connection; R2 access keys are still empty in `.env.local`.
+- Owner asked for R&D on making flashcards better at higher-order learning and less overwhelming. Used `superpowers:brainstorming` (installed at user scope) with research agents; the BMAD PM skill needs `_bmad/` scaffolding that is not set up here, so its product-manager lens was applied by hand.
+- New designs, all **waiting for the owner's approval** (read `docs/README.md` for the index):
+  - Phase 22 `docs/spec-targeted-review.md`: run counter on cards (3 right in a row = ready to upgrade, 3 wrong = stuck), targeted review page, fused questions (AI drafts over MCP, learner approves; originals stay in study), filter before a card is made, weekly budget and catch-up mode as a read-time override.
+  - Phase 23 `docs/spec-master-card.md` and proposed `docs/adr/0016-master-card-lens-over-cards.md`: the master as a lens over the learner's cards (sheet, many cards per entry, session through `/learn/<deck>/master.<noteId>`, opt-in relation cards, what-if, readiness, concept group, flow diagram with `@xyflow/react` + `dagre`). Replaces the first "Revise with self-marked hidden entries" draft, which the owner rejected after trying a prototype.
+  - Phase 24 `docs/spec-ask-ai.md`: one "Ask AI" button for every AI-needing feature: copy a short prompt (ids and names only) and open the user's assistant, which works through MCP. Rule: human UI, MCP and Ask AI must all exist.
+- **Full pre-build review (2026-11-07, later):** five independent reviewers checked every not-yet-built spec against the code and found many wrong claims (deck storage, MCP limits, existing auth and media code, existing `/stats` route, the master card's `cardId` sites, relation cards vs `syncMasterCards`, the run counter's write path). Fixes: `spec-targeted-review.md` and `spec-master-card.md` rewritten; `spec-ask-ai.md` corrected; Phase 16 and Phases 17 to 20 rewritten as `spec-phase-16.md` and `spec-phases-17-20.md` (the old text in `spec-comparison-flash-deep.md` now carries a banner and must not be used to build); ADR 0017 proposed. Scope recommendations (defer 16.3, 18.1, 19, `.apkg`; cut archive) await the owner. A second review round of the corrected specs followed.
+- Corrected facts found on the way: review logs DO sync (client pushes them by `reviewedAt`; ADR 0008 updated); no cron anywhere (non-goal N3 wording, Phase 21 dropped); Mermaid rejected for the diagram.
+- Prototype (private artifact, example JavaScript-interview data): https://claude.ai/artifact/LB11bBALWCHYWcV4WySC75. It predates the sheet-blocks and related-masters part of the Phase 23 design and uses plain SVG.
+- Unverified: prompt-link formats for assistants other than Claude desktop (unofficial; need the Test button in a browser), diagram chunk precache and offline behaviour, `@xyflow/react` bundle size.
+- Next: owner approves (or changes) Phases 22 to 24; then `superpowers:writing-plans` and the build order in `spec-master-card.md` section 10 (start with many cards per entry, then the session route); the review-path code does not need extracting, because the master session reuses `/learn`.
+- Uncommitted: the new and changed docs listed above.
+
 ## Session 2026-11-07 (Deep Flash vs Skola++ comparison + gap-closing spec)
 
 - Ran 4 parallel deep-recon agents against both repos simultaneously:
