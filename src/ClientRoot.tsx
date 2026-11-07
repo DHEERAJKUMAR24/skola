@@ -15,6 +15,7 @@ import { Navigate, RouterProvider, createHashRouter } from "react-router-dom";
 const MasterBuilderView = lazy(() => import("@/app/master/MasterBuilderView"));
 const MasterGraphView = lazy(() => import("@/app/master/MasterGraphView"));
 import { syncUrl } from "./logic/auth";
+import { ensureTimeZone } from "./logic/settings/timeZone";
 import { startSync } from "./logic/syncScheduler";
 
 const router = createHashRouter(
@@ -81,6 +82,7 @@ export default function ClientRoot() {
     if (syncUrl) startSync();
     ensurePersistentStorage();
     void ensureDefaultPreset();
+    void ensureTimeZone();
   }, []);
 
   return <RouterProvider router={router} />;

@@ -25,6 +25,12 @@ export interface SettingsValues {
   /** The user's knowledge hierarchy (levels and their roles). `undefined` = default. Synced. See logic/settings/hierarchy.ts. */
   "#hierarchy"?: HierarchyLevel[];
 
+  /** IANA zone; tells the server when the learner's day starts. Written when unset or by the picker only. Synced. */
+  "#timeZone"?: string;
+  /** Boost cards taken today per deck (`date` is the learner's day). Synced. */
+  "#dailyBoosts"?: { date: string; byDeck: Record<string, number> };
+  "#gradingMode": "silent" | "announce" | "self_grade";
+
   "#colorSchemePreference": "light" | "dark" | "auto";
   "#densityPreference": "relaxed" | "compact" | "auto";
   "#showCognitivePrompts": boolean;

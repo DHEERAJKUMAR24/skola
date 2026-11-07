@@ -7,6 +7,7 @@ export const defaultSettings: SettingsValues = {
   "#developerMode": false,
   "#showShortcutHints": true,
   "#toursSeen": [],
+  "#gradingMode": "announce",
 
   "#colorSchemePreference": "auto",
   "#densityPreference": "auto",

@@ -47,6 +47,8 @@
       "description": "Description",
       "description-placeholder": "Optional",
       "name": "Name",
+      "time-zone": "Time zone",
+      "time-zone-description": "Tells the server when your day starts. It is set once from this device and only changed by you here.",
       "name-placeholder": "for example 'Spanish', 'Anatomy' or 'History",
       "new-deck": "Create New Deck",
       "new-subdeck": "Create New Subdeck in {{superDeck}}",

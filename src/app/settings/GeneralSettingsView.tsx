@@ -2,6 +2,7 @@ import { Stack } from "@/components/ui/Stack";
 import { useTranslation } from "react-i18next";
 import LanguageSelect from "./LanguageSelect";
 import SettingsInput from "./SettingsInput";
+import TimeZoneSelect from "./TimeZoneSelect";
 
 export default function GeneralSettingsView() {
   const [t] = useTranslation();
@@ -14,6 +15,7 @@ export default function GeneralSettingsView() {
         inputType={"text"}
       />
       <LanguageSelect />
+      <TimeZoneSelect />
       <SettingsInput
         label={t("settings.general.show-shortcut-hints")}
         description={t("settings.general.show-shortcut-hints-description")}
