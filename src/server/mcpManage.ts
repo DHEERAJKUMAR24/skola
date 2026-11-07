@@ -22,15 +22,11 @@ import {
   snapshot,
   str,
 } from "./mcpData";
+import { ManageError } from "./mcpErrors";
 import { MASTER_TYPE, replanRows } from "./mcpMaster";
 import { HISTORY_DAYS, pictureOmitted } from "./noteHistory";
 
-/** `[code] message` so a client can branch on the code and show the text. */
-class ManageError extends Error {
-  constructor(code: string, message: string) {
-    super(`[${code}] ${message}`);
-  }
-}
+export { ManageError };
 
 const NEW = 0;
 const MAX_IDS = 200;
