@@ -1,5 +1,6 @@
 import { createHash, randomUUID } from "node:crypto";
 import { Rating, createEmptyCard, default_w } from "ts-fsrs";
+import { validateDeckName } from "../logic/deck/deckPath";
 import { effectiveOptions } from "../logic/deck/effectiveOptions";
 import { normalizeTags } from "../logic/note/tagNormalize";
 import { recallAfter } from "../logic/scheduling/forecast";
@@ -22,6 +23,7 @@ import {
   snapshot,
   str,
 } from "./mcpData";
+import { resolveDeckPath, siblingTaken } from "./mcpDecks";
 import { ManageError } from "./mcpErrors";
 import { MASTER_TYPE, replanRows } from "./mcpMaster";
 import { HISTORY_DAYS, pictureOmitted } from "./noteHistory";
@@ -141,7 +143,7 @@ const update_deck: Tool = {
   name: "update_deck",
   write: true,
   description:
-    "Change a deck like the app's deck menu: rename (name), description, pause or resume it (paused), exam date (exam_date as YYYY-MM-DD, or null to clear) with exam_buffer_days and exam_ramp, the study preset it follows (preset_id, see list_presets; limits and retention come from the preset), and move it under another deck (parent_id, or null for the top level). Only the fields you pass change.",
+    "Change a deck like the app's deck menu: rename (name), description, pause or resume it (paused), exam date (exam_date as YYYY-MM-DD, or null to clear) with exam_buffer_days and exam_ramp, the study preset it follows (preset_id, see list_presets; limits and retention come from the preset), and move it under another deck (parent_id: id or path like Parent::Child, or null for the top level). Only the fields you pass change.",
   inputSchema: {
     type: "object",
     properties: {
@@ -153,7 +155,10 @@ const update_deck: Tool = {
       exam_buffer_days: { type: "integer", minimum: 0, maximum: 365 },
       exam_ramp: { type: "boolean" },
       preset_id: { type: "string" },
-      parent_id: { type: ["string", "null"] },
+      parent_id: {
+        type: ["string", "null"],
+        description: "Parent deck: id or path like Parent::Child, or null",
+      },
     },
     required: ["deck_id"],
   },
@@ -165,13 +170,27 @@ const update_deck: Tool = {
     if (!deck) throw new ManageError("deck_not_found", "deck not found");
     const next: Row = { ...deck, options: { ...deck.options } };
     const changed: string[] = [];
+    const oldParentId = (deck.superDecks ?? []).slice(-1)[0] ?? null;
+    let newParentId: string | null = oldParentId;
+    if (a.parent_id !== undefined) {
+      if (a.parent_id === null) newParentId = null;
+      else if (typeof a.parent_id === "string")
+        newParentId = (await resolveDeckPath(ctx, a.parent_id)).deck.id;
+      else
+        throw new ManageError(
+          "invalid_argument",
+          "parent_id must be a deck id, a path or null"
+        );
+    }
 
     if (a.name !== undefined) {
       const name = typeof a.name === "string" ? a.name.trim() : "";
-      if (!name || name.length > 100)
+      const badName = validateDeckName(name);
+      if (badName) throw new ManageError("invalid_argument", badName);
+      if (siblingTaken(decks, newParentId ?? undefined, name, id))
         throw new ManageError(
-          "invalid_argument",
-          "name must be 1 to 100 chars"
+          "deck_name_taken",
+          `"${name}" already exists here`
         );
       next.name = name;
       changed.push("name");
@@ -225,13 +244,6 @@ const update_deck: Tool = {
     stage.set("decks", id, next);
 
     if (a.parent_id !== undefined) {
-      const newParentId = a.parent_id === null ? null : str(a, "parent_id");
-      const oldParentId = (deck.superDecks ?? []).slice(-1)[0] ?? null;
-      if (newParentId === undefined)
-        throw new ManageError(
-          "invalid_argument",
-          "parent_id must be a deck id or null"
-        );
       if (newParentId !== oldParentId) {
         const parent = newParentId ? stage.get(newParentId) : undefined;
         if (newParentId && !parent)
@@ -511,11 +523,14 @@ const STATUS = ["new", "learning", "review", "due", "suspended", "buried"];
 
 const list_cards: Tool = {
   name: "list_cards",
-  description: `List cards page by page, like the app's notes explorer. Filters: deck_id (with sub-decks), tag, status (${STATUS.join(", ")}), query (text or tag contains). limit default 50, max 100; offset to continue (next_offset is null on the last page). Each card has fields, state, due, tags and note_id.`,
+  description: `List cards page by page, like the app's notes explorer. Filters: deck_id (id or path like Parent::Child, with sub-decks), tag, status (${STATUS.join(", ")}), query (text or tag contains). limit default 50, max 100; offset to continue (next_offset is null on the last page). Each card has fields, state, due, tags and note_id.`,
   inputSchema: {
     type: "object",
     properties: {
-      deck_id: { type: "string" },
+      deck_id: {
+        type: "string",
+        description: "Deck: id or path like Parent::Child",
+      },
       tag: { type: "string" },
       status: { type: "string", enum: STATUS },
       query: { type: "string" },
@@ -529,7 +544,11 @@ const list_cards: Tool = {
       throw bad(`status must be one of ${STATUS.join(", ")}`);
     const tag = str(a, "tag")?.toLowerCase();
     const q = str(a, "query")?.toLowerCase();
-    const { cards, notes } = await snapshot(ctx, str(a, "deck_id"));
+    const deckArg = str(a, "deck_id");
+    const { cards, notes } = await snapshot(
+      ctx,
+      deckArg ? (await resolveDeckPath(ctx, deckArg)).deck.id : undefined
+    );
     const matches = cards
       .filter((c) => {
         const n = notes.get(c.note);
@@ -864,12 +883,15 @@ const move_cards: Tool = {
   name: "move_cards",
   write: true,
   description:
-    "Move cards to another deck. Like the app, the whole note moves, so sibling cards (other clozes or sides of the same note) go along. Schedules and history are kept. Up to 200 card_ids.",
+    "Move cards to another deck (deck_id: id or path like Parent::Child). Like the app, the whole note moves, so sibling cards (other clozes or sides of the same note) go along. Schedules and history are kept. Up to 200 card_ids.",
   inputSchema: {
     type: "object",
     properties: {
       card_ids: { type: "array", items: { type: "string" } },
-      deck_id: { type: "string" },
+      deck_id: {
+        type: "string",
+        description: "Deck: id or path like Parent::Child",
+      },
     },
     required: ["card_ids", "deck_id"],
   },
@@ -880,9 +902,10 @@ const move_cards: Tool = {
       load(ctx.db, ctx.userId, "notes"),
       cardsByIds(ctx, ids),
     ]);
-    const target = decks.find((d) => d.id === str(a, "deck_id"));
-    if (!target)
-      throw new ManageError("deck_not_found", "target deck not found");
+    const { deck: target } = await resolveDeckPath(
+      ctx,
+      str(a, "deck_id") ?? ""
+    );
     const noteIds = new Set(ids.map((i) => (byId.get(i) as Row).note));
     const moving = all.filter(
       (c) => noteIds.has(c.note) && c.deck !== target.id

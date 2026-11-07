@@ -49,8 +49,9 @@ const row = async (tbl: string, id: string) => {
   );
   return rows[0]?.data;
 };
+let decks = 0;
 const deckOf = async () =>
-  (await call("create_deck", { name: "T" })).id as string;
+  (await call("create_deck", { name: `T${++decks}` })).id as string;
 const area = { x: 0.1, y: 0.1, w: 0.3, h: 0.3 };
 
 it("recognises pictures by their bytes and enforces the size cap", () => {

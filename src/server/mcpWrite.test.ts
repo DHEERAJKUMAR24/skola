@@ -79,11 +79,30 @@ it("creates decks and sub-decks, keeping the parent's list and preset", async ()
   expect(c.superDecks).toEqual([parent.id]);
   expect(c.options.presetId).toBe("default");
   expect((await call("list_decks")).map((d: any) => d.path)).toEqual(
-    expect.arrayContaining(["Bio", "Bio / Cells"])
+    expect.arrayContaining(["Bio", "Bio::Cells"])
   );
-  expect(await call("create_deck", { name: "x", parent_id: "nope" })).toEqual({
-    error: "parent deck not found",
+  expect(
+    (await call("create_deck", { name: "x", parent_id: "nope" })).error
+  ).toMatch(/^\[deck_not_found\]/);
+});
+
+it("takes deck paths in create_deck and add_cards", async () => {
+  const med = await call("create_deck", { name: "Med" });
+  await call("create_deck", { name: "Cardiology", parent_id: med.id });
+  const sub = await call("create_deck", {
+    name: "Valves",
+    parent_id: "Med::Cardiology",
   });
+  expect((await row("decks", sub.id)).superDecks).toHaveLength(2);
+  const r = await call("add_cards", {
+    deck_id: "med::cardiology",
+    cards: [{ front: "q", back: "a" }],
+  });
+  expect(r.added).toBe(1);
+  expect((await row("cards", r.card_ids[0])).deck).not.toBe(sub.id);
+  expect((await call("list_decks")).map((d: any) => d.path)).toContain(
+    "Med::Cardiology::Valves"
+  );
 });
 
 it("adds cards as notes plus fresh cards, escaped, and the deck lists them", async () => {

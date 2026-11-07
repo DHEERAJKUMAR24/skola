@@ -11,6 +11,7 @@ import {
   str,
   studyable,
 } from "./mcpData";
+import { deckPathOf } from "./mcpDecks";
 import { DUPLICATE_TOOLS } from "./mcpDuplicates";
 import { EVIDENCE_TOOLS } from "./mcpEvidence";
 import { INSTRUCTION_TOOLS } from "./mcpInstructions";
@@ -41,14 +42,11 @@ const READ_TOOLS: Tool[] = [
     inputSchema: { type: "object", properties: {} },
     async run(ctx) {
       const { decks, cards } = await snapshot(ctx);
-      const byId = new Map(decks.map((d) => [d.id, d]));
       const count = new Map<string, number>();
       for (const c of cards) count.set(c.deck, (count.get(c.deck) ?? 0) + 1);
       return decks.map((d) => ({
         id: d.id,
-        path: [...(d.superDecks ?? []), d.id]
-          .map((id) => byId.get(id)?.name ?? "?")
-          .join(" / "),
+        path: deckPathOf(decks, d),
         cards: count.get(d.id) ?? 0,
         paused: d.priority === "paused",
       }));

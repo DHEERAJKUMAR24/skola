@@ -1,9 +1,13 @@
 import { randomUUID } from "node:crypto";
 import { validateDeckName } from "../logic/deck/deckPath";
-import { type Ctx, type Row, load, putRows } from "./mcpData";
+import {
+  type Ctx,
+  DEFAULT_PRESET_ID,
+  type Row,
+  load,
+  putRows,
+} from "./mcpData";
 import { ManageError } from "./mcpErrors";
-
-const DEFAULT_PRESET_ID = "default";
 
 /** "A::B" or "A / B" to ["A", "B"]; an empty segment is an error. */
 export function splitDeckPath(input: string): string[] {
@@ -25,6 +29,20 @@ export function deckPathOf(decks: Row[], deck: Row): string {
 }
 
 const parentOf = (d: Row): string | undefined => (d.superDecks ?? []).at(-1);
+
+/** A sibling under `parentId` already has this name (case-insensitive); `exceptId` is the deck being renamed. */
+export const siblingTaken = (
+  decks: Row[],
+  parentId: string | undefined,
+  name: string,
+  exceptId?: string
+) =>
+  decks.some(
+    (d) =>
+      d.id !== exceptId &&
+      parentOf(d) === parentId &&
+      d.name.trim().toLowerCase() === name.toLowerCase()
+  );
 
 /**
  * A deck by id or by path ("Med::Cardiology", case-insensitive). With `createMissing`, the
@@ -69,13 +87,6 @@ export async function resolveDeckPath(
     const name = segs[i];
     const bad = validateDeckName(name);
     if (bad) throw new ManageError("invalid_argument", bad);
-    const taken = decks.some(
-      (d) =>
-        parentOf(d) === cur?.id &&
-        d.name.trim().toLowerCase() === name.toLowerCase()
-    );
-    if (taken)
-      throw new ManageError("deck_name_taken", `"${name}" already exists here`);
     const id = randomUUID();
     const row: Row = {
       id,

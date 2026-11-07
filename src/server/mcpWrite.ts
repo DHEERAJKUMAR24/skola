@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { type Card as FsrsCard, createEmptyCard } from "ts-fsrs";
 import { default_w } from "ts-fsrs";
+import { validateDeckName } from "../logic/deck/deckPath";
 import { effectiveOptions } from "../logic/deck/effectiveOptions";
 import { normalizeTags } from "../logic/note/tagNormalize";
 import {
@@ -14,6 +15,7 @@ import {
 import {
   type Args,
   type Ctx,
+  DEFAULT_PRESET_ID,
   type Row,
   type Tool,
   type WriteRow,
@@ -22,11 +24,12 @@ import {
   putRows,
   str,
 } from "./mcpData";
+import { resolveDeckPath, siblingTaken } from "./mcpDecks";
+import { ManageError } from "./mcpErrors";
 import { CARD_TYPES, buildNote, editNote, hasContentEdit } from "./mcpNotes";
 
 const MAX_NEW_CARDS = 50;
 const MAX_TEXT = 10_000;
-const DEFAULT_PRESET_ID = "default";
 
 const need = <T>(v: T | undefined | null, msg: string): T => {
   if (v === undefined || v === null) throw new Error(msg);
@@ -57,27 +60,33 @@ const create_deck: Tool = {
   name: "create_deck",
   write: true,
   description:
-    "Create a deck, optionally inside a parent deck. Sub-decks follow the parent's study preset.",
+    'Create a deck, optionally inside a parent deck (parent_id: id or path like Parent::Child). Names cannot contain "::". Sub-decks follow the parent\'s study preset.',
   inputSchema: {
     type: "object",
     properties: {
       name: { type: "string" },
-      parent_id: { type: "string" },
+      parent_id: {
+        type: "string",
+        description: "Parent deck: id or path like Parent::Child",
+      },
       description: { type: "string" },
     },
     required: ["name"],
   },
   async run(ctx, a) {
-    const name = text(a, "name") as string;
-    if (name.length > 100) throw new Error("name is too long");
+    const name = (text(a, "name") as string).trim();
+    const bad = validateDeckName(name);
+    if (bad) throw new ManageError("invalid_argument", bad);
     const parentId = str(a, "parent_id");
     const parent = parentId
-      ? need(await one(ctx, "decks", parentId), "parent deck not found")
+      ? (await resolveDeckPath(ctx, parentId)).deck
       : undefined;
+    if (siblingTaken(await load(ctx.db, ctx.userId, "decks"), parent?.id, name))
+      throw new ManageError("deck_name_taken", `"${name}" already exists here`);
     const id = randomUUID();
     const deck: Row = {
       id,
-      name: name.trim(),
+      name,
       cards: [],
       notes: [],
       subDecks: [],
@@ -116,7 +125,10 @@ const add_cards: Tool = {
   inputSchema: {
     type: "object",
     properties: {
-      deck_id: { type: "string" },
+      deck_id: {
+        type: "string",
+        description: "Deck: id or path like Parent::Child",
+      },
       cards: {
         type: "array",
         items: {
@@ -163,10 +175,7 @@ const add_cards: Tool = {
     required: ["deck_id", "cards"],
   },
   async run(ctx, a) {
-    const deck = need(
-      await one(ctx, "decks", str(a, "deck_id") ?? ""),
-      "deck not found"
-    );
+    const { deck } = await resolveDeckPath(ctx, str(a, "deck_id") ?? "");
     const list = a.cards;
     if (!Array.isArray(list) || !list.length || list.length > MAX_NEW_CARDS)
       throw new Error(`cards must hold 1 to ${MAX_NEW_CARDS} items`);

@@ -523,3 +523,59 @@ describe("cards", () => {
     expect((await call(b, "list_cards")).total).toBe(0);
   });
 });
+
+describe("deck paths", () => {
+  it("accepts a path for list_cards, move_cards and update_deck parent_id", async () => {
+    const u = await setup();
+    const med = await deckOf(u, "Med");
+    const cardio = await deckOf(u, "Cardiology", med);
+    const other = await deckOf(u, "Other");
+    const [c1] = await cardsIn(u, cardio, [["q", "a"]]);
+    const listed = await call(u, "list_cards", { deck_id: "med::cardiology" });
+    expect(listed.cards.map((c: any) => c.id)).toEqual([c1]);
+    expect(
+      (await call(u, "move_cards", { card_ids: [c1], deck_id: "Other" })).moved
+    ).toBe(1);
+    expect((await row(u, "cards", c1)).data.deck).toBe(other);
+    expect(
+      (await call(u, "update_deck", { deck_id: cardio, parent_id: "Other" }))
+        .changed
+    ).toEqual(["parent_id"]);
+    expect((await row(u, "decks", cardio)).data.superDecks).toEqual([other]);
+    expect(
+      (
+        await call(u, "update_deck", {
+          deck_id: other,
+          parent_id: "Other::Cardiology",
+        })
+      ).code
+    ).toBe("invalid_move");
+    expect((await call(u, "list_cards", { deck_id: "Nope::Deck" })).code).toBe(
+      "deck_not_found"
+    );
+  });
+
+  it("refuses '::' and case-only sibling duplicates in create_deck and update_deck", async () => {
+    const u = await setup();
+    const a = await deckOf(u, "Med");
+    const b = await deckOf(u, "Cardiology", a);
+    await deckOf(u, "Renal", a);
+    expect((await call(u, "create_deck", { name: "A::B" })).code).toBe(
+      "invalid_argument"
+    );
+    expect(
+      (await call(u, "create_deck", { name: "cardiology", parent_id: "Med" }))
+        .code
+    ).toBe("deck_name_taken");
+    expect(
+      (await call(u, "update_deck", { deck_id: b, name: "A::B" })).code
+    ).toBe("invalid_argument");
+    expect(
+      (await call(u, "update_deck", { deck_id: b, name: "RENAL" })).code
+    ).toBe("deck_name_taken");
+    // renaming a deck to a case change of itself is fine
+    expect(
+      (await call(u, "update_deck", { deck_id: b, name: "CARDIOLOGY" })).ok
+    ).toBe(true);
+  });
+});

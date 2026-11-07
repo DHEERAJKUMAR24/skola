@@ -29,6 +29,8 @@ export interface Tool {
 export const ms = (d: unknown): number =>
   d && typeof d === "object" && "$d" in d ? Number((d as Row).$d) : 0;
 
+export const DEFAULT_PRESET_ID = "default";
+
 export const str = (a: Args, k: string) =>
   typeof a[k] === "string" ? (a[k] as string) : undefined;
 
