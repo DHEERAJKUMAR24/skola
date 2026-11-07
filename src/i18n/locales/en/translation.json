@@ -47,8 +47,6 @@
       "description": "Description",
       "description-placeholder": "Optional",
       "name": "Name",
-      "time-zone": "Time zone",
-      "time-zone-description": "Tells the server when your day starts. It is set once from this device and only changed by you here.",
       "name-placeholder": "for example 'Spanish', 'Anatomy' or 'History",
       "new-deck": "Create New Deck",
       "new-subdeck": "Create New Subdeck in {{superDeck}}",
@@ -470,6 +468,8 @@
       "language-description": "Set the language for the user interface.",
       "name": "Name",
       "name-description": "This name will be used to customize the user experience.",
+      "time-zone": "Time zone",
+      "time-zone-description": "Tells the server when your day starts. It is set once from this device and only changed by you here.",
       "show-shortcut-hints": "Show Shortcuts",
       "show-shortcut-hints-description": "Possible keyboard shortcuts will appear in menus etc.",
       "title": "General"

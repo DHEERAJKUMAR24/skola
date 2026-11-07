@@ -4,7 +4,7 @@ import { useSetting } from "@/logic/settings/hooks/useSetting";
 import { setSetting } from "@/logic/settings/setSetting";
 import { useTranslation } from "react-i18next";
 
-const zones = Intl.supportedValuesOf("timeZone");
+const zones = Intl.supportedValuesOf?.("timeZone") ?? [];
 
 export default function TimeZoneSelect() {
   const [timeZone] = useSetting("#timeZone");
