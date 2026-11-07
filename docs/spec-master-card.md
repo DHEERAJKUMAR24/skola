@@ -55,7 +55,7 @@ The reference for "see" is a concept page like jsinterview.dev (timeline, key po
 - No cron, polling or background work.
 - FSRS: only the existing review path rates a card (`updateCardModel` through `useLearning`).
 - Pure modules (no Dexie, no React) in `src/logic/master/`, as ADR 0014 did, so the MCP server reuses them.
-- Every new setting and mode gets an `InfoTip`; the new views get tour entries; logic gets Vitest tests (PGlite for server code).
+- Every new setting and mode gets an `InfoTip`; the new views get tour entries and their text goes through `t()` (i18n); floating menus used inside modals (the Ask AI menu in the Gaps panel and Gap hunt) use the Popover API (top layer); logic gets Vitest tests (PGlite for server code, `// @vitest-environment node`).
 - Dependencies, lazy only: `@xyflow/react` (version 12 or later, with `colorMode`) and `@dagrejs/dagre` (the maintained fork; the old `dagre` package is unmaintained).
 
 ## 7. How it works today (checked in the code)
@@ -89,12 +89,14 @@ MasterCardContent { sectionId?, retired?, edgeId? }     // a relation card has e
 - **Where `entry.cardId` is read today and must use `linkedCardsOf` (the build step lists each with a test):**
   - model: `masterModel.ts` (`isBlankEntry` would wrongly drop an entry that has only `cardIds`, `linkedCardIds`, `cleanMaster`, `takeEntry`, `parseMasterText`, `masterToText`, `planMasterCards` inputs);
   - Dexie side: `masterCards.ts` (`linkedStatesOf` returns one state per entry; it must return one per card and group by entry), `builderData.ts` (graph input, `unlinkMasterEntriesTo`), `builderOps.ts` (link, unlink, dangling, duplicates, orphans), `coverage.ts`, `activities.ts`;
-  - server: `mcpData.ts` (`masterSections`), `mcpMaster.ts` (get, create, ops, suggestion, delete), `mcpManage.ts` (card deletion cleanup);
+  - server: `mcpData.ts` (`masterSections`, and the card view that emits `section_id`, which also gets `edge_id`), `mcpMaster.ts` (get, create, ops, suggestion, delete, and the idempotency request hash, which today covers only `[text, cardId]` and must include `cardIds` and edges), `mcpManage.ts` (card deletion cleanup and the card output that emits `section_id`), `mcpWrite.ts` (the leech tag and sibling burying on MCP review);
   - UI: `BuilderRows.tsx`, `RecallSweepModal.tsx`, `GapHuntModal.tsx`, `MasterReview.tsx` (live-query key), `MasterBuilderView.tsx`, the text editor in `MasterCardEditor.tsx`.
-- **Text form:** `parseMasterText` / `masterToText` and the MCP `text` field keep the primary `cardId` only; extra cards (`cardIds`) are kept by matching the entry on re-parse (existing behaviour matches by id for linked entries). Editing the text of an **unlinked** entry in the text editor gives it a new id (`takeEntry` matches by exact text), which drops its edges: the editor warns when that would drop an edge, and the builder UI (which keeps ids) is the recommended way to rename.
-- **No field is lost on save (version skew included):** `cleanMaster` merges from the existing content and preserves unknown keys; `MasterNote.tsx` and `contentOf` spread the existing content instead of rebuilding from `title` and `sections`. Build step 1 ships alone first, so an older client that saves a note written by a newer one does not strip the new fields.
-- **Validation (`validateMaster`):** at most 40 edges, labels at most 24 characters, no self edge, no duplicate pair, edge ends must be entries of this master; `related` ids must exist when written; `tips` at most 2,000 characters. Strict on writes, forgiving when drawing (an edge to a missing entry is skipped).
-- **Entry changes keep edges consistent:** removing an entry removes its edges first; merge and duplicate fixes (`fixSameCardDuplicates`, `fixSimilarDuplicates`) and the MCP ops `remove_entry`, `remove_section`, `remove_dangling_entries` rewire the removed entry's edges to the surviving entry before deleting it (no self edges, no duplicate pairs). If an edge with a reviewed relation card would be dropped, the app asks first and the MCP op returns `[edge_has_reviewed_card]` unless `force: true`. History restore (`restore_card_version`) re-plans cards and tolerates edges to entries that no longer exist (they are dropped).
+- **Text form:** `masterToText` writes the primary `cardId` only. `parseMasterText` (`takeEntry` matches a previous entry only by `cardId` or by exact text and returns fresh objects today) is changed to **copy `cardIds` from the matched previous entry**, with a test, so a text edit does not lose extra cards. Editing the text of an **unlinked** entry gives it a new id (no match), which drops its edges: the editor warns when that would drop an edge, and the builder UI (which keeps ids) is the recommended way to rename.
+- **No field is lost on save (version skew included):** `cleanMaster` (one argument today) merges from the existing content and preserves unknown keys. Every place that rebuilds content from `{ title, status, sections }` is changed to spread the existing content: `MasterNote.tsx`, `MasterBuilderView.tsx` (two sites), `MasterCardEditor.tsx`, `mcpMaster.ts` (the op context holds only title and sections; two save sites) and `contentOf` (which already drops `status` today). The builder autosaves from a possibly stale note reference, so `updateNote` re-reads the row inside its transaction and writes only title, status and sections, so a concurrent MCP `set_edges` is not overwritten.
+- **Version skew:** an older client treats a relation card (no `sectionId`) as a duplicate whole-master card and can delete or retire the real one (`masterCards.ts` keys by `sectionId ?? ""`). Build step 1 ships alone first and already changes `keyOf` to ignore any card that has `edgeId`; it also preserves unknown keys, so older and newer clients can coexist.
+- **Partly dangling entries:** an entry is dangling only when all of its cards are gone; a missing extra card is reported as "missing card" and the fix removes just that id.
+- **Validation (`validateMaster`):** at most 100 edges per master (and 40 per drawn diagram, see 8.3), labels at most 24 characters, no self edge, no duplicate pair, edge ends must be entries of this master; `related` ids must exist when written; `tips` at most 2,000 characters. Strict on writes, forgiving when drawing (an edge to a missing entry is skipped).
+- **Entry changes keep edges consistent:** removing an entry drops its edges (the app asks first, and the MCP ops `remove_entry`, `remove_section` and `remove_dangling_entries` return `[edge_has_reviewed_card]` unless `force: true` when an edge with a reviewed relation card would go); only **merge and duplicate fixes** have a surviving entry, so only they rewire (`fixSameCardDuplicates`, `fixSimilarDuplicates`, `removeEntries`: their signatures take sections only today and change to take the edges too; a merge also merges the two entries' `cardIds`) and the MCP ops `remove_entry`, `remove_section`, `remove_dangling_entries` rewire the removed entry's edges to the surviving entry before deleting it (no self edges, no duplicate pairs). History restore (`restore_card_version`) re-plans cards and tolerates edges to entries that no longer exist (they are dropped).
 
 ### 8.2 The sheet: blocks built from cards
 
@@ -115,35 +117,40 @@ MasterCardContent { sectionId?, retired?, edgeId? }     // a relation card has e
 ### 8.3 The diagram as a navigator (not a quiz)
 
 - Drawn with `@xyflow/react` and `@dagrejs/dagre` in a lazy chunk (precache verified in the production build; the list view is the fallback). Box id = entry id; labels are the entry text, so the picture cannot disagree with the cards.
-- **Limits, defined:** a *box* is an entry that is on at least one arrow; entries on no arrow are listed under the diagram. At most 25 boxes and 40 arrows per diagram. A master has one diagram when it fits; otherwise one per top-level section, and an arrow to another section is drawn as a stub labelled with the target's section. `MASTER_MAX_ENTRIES` (500) and the 12-entry card split are unchanged and unrelated.
-- A box shows its section, card types (chips), strength, and "untested" when it has no reviewed card. Tapping opens the **entry panel**: every linked card (type, preview, recall, due, "also in <other master>"), "Study this entry", and "Add a card" (opens the note editor with the entry pre-linked; Ask AI for a draft).
+- **Limits, defined:** a *box* is an entry that is on at least one arrow; entries on no arrow are listed under the diagram. At most 25 boxes and 40 arrows per drawn diagram; the write-time validator limit is the master-wide 100. If a diagram has more than 40 arrows, it draws the first 40 by depth and lists the rest under the diagram (the validator does not know about drawing). A master has one diagram when it fits; otherwise one per top-level section, and an arrow to another section is drawn as a stub labelled with the target's section. A section with more than 25 boxes draws the first 25 by depth and lists the rest under the diagram. Depth is the longest path from a source; a cycle is broken by capping the iterations, and the arrow that closes it is drawn backwards. `MASTER_MAX_ENTRIES` (500) and the 12-entry card split are unchanged and unrelated.
+- A box shows its section, card types (chips), strength, and "untested" when it has no reviewed card. Tapping opens the **entry panel**: every linked card (type, preview, recall, due, "also in <other master>"), "Study this entry", and "Add a card". Add a card opens the new-note page (`/new/:deckId?`, the query goes after the hash route) with a `link=<masterNoteId>.<entryId>` parameter. The hook point is the shared `useNoteCreation` hook (`NewNotesView` does not read the result): it reads `link` from `useSearchParams`, and after `createNote` (which returns only a note id) looks the new cards up with `db.cards.where("note")` and appends their ids to the entry's `cardIds`. Ask AI offers a draft.
 - An arrow is dashed without a relation card and coloured by that card's strength with one. Tapping opens the **arrow panel**: make or remove the relation card.
-- Authoring edges: a simple editor in the builder (from, to, short verb), and the AI draft (Phase 24). **AI-written edges** are saved by `set_edges` after the learner says yes in the chat (the server cannot verify it); the builder then shows every arrow and the 7-day note history can undo a bad write. Only Phase 22 fusion drafts have a pending state in the app.
+- Authoring edges: a simple editor in the builder (from, to, short verb), and the AI draft (Phase 24). **AI-written edges** are saved by `set_edges` after the learner says yes in the chat (the server cannot verify it); the builder then shows every arrow and the note history (7 days today, 90 days after Phase 16.2) can undo a bad write. Only Phase 22 fusion drafts have a pending state in the app.
 - Accessibility: xyflow provides focusable nodes and ARIA; the list view is the alternative.
 
 ### 8.4 Session: the real cards (route, queue, order)
 
-- New param `master.<noteId>` on `/learn/:deckId/:params`, and `cram.master.<noteId>` for practice. `parseWeakDrillParam` is generalised to a small `parseMasterParam` that returns `{ kind: "weak" | "session" | "practice", noteId }`.
-- **Queue:** `masterCardsForStudy(noteId)` in `builderData.ts`: unsuspended cards linked from the master's entries (any deck) plus its relation cards. `master.<id>` runs through the normal rules: due cards, new cards within the daily caps, paused decks excluded (this is **not** `learnAll`). `cram.master.<id>` is `learnAll` and `cram`: everything once, FSRS untouched (existing cram behaviour).
-- **Order:** a new comparator `CardSorts.byMasterOrder(order)` sorts by the diagram depth of the card's entry, sources first (relation cards by the depth of their target); the existing "time-critical first" and new/review ratio logic stay, so order is "diagram order within each group", not strict. No promise stronger than that.
+- **Params** on `/learn/:deckId/:params` (`parseWeakDrillParam` is generalised to `parseMasterParam`, returning `{ kind, noteId, scope }`):
+  - `master.<noteId>`: the daily session, due cards through the normal rules.
+  - `master.<noteId>.entry.<entryId>` and `master.<noteId>.block.<example|pitfall|apply>`: **scoped study** for "Study this entry" and the active mode of a block. These use `learnAll` (like `weak.<noteId>`), because the normal rules drop reviewed cards that are not due yet and the session would end at once.
+  - `cram.master.<noteId>`: practice, `learnAll` and `cram` (everything once, FSRS untouched).
+  - `useDeckFromUrl` keys its live query on `deckId` only, so moving between `master.a` and `master.b` in one deck would keep stale params; the key includes the params.
+- **Queue:** `masterCardsForStudy(noteId, scope)` in `builderData.ts`: unsuspended cards linked from the master's entries (any deck) plus its relation cards, filtered by the scope. The daily `master.<id>` session is **not** `learnAll`: due cards, new cards within the daily caps, paused decks excluded.
+- **Order:** the existing sort function type takes only `sortOrder` (`CardSorting.ts`), so it cannot carry diagram data. The querier instead stamps `customOrder` on the card copies it returns (depth of the card's entry, sources first; relation cards by the depth of their target) and the session uses the existing `byCustomOrder`. Time-critical cards still go first, the new/review ratio still applies, and a deck set to random order still shuffles new cards, so the order is "diagram order where the study screen allows it", not a promise. Depth comes from a plain topological pass, not from `diagramLayout.ts`, so the diagram library stays out of the `/learn` chunk.
 - **Rating:** the normal buttons, preview intervals, leech and sibling rules, and (Phase 22) the run counter, because it is the same `updateCardModel`.
-- **Rules for relation cards in the shared master note:** `siblingsToBury` and `applyLeech` work per note today, so (a) burying skips cards of master notes, (b) a leech on a relation card suspends **that card only** and never tags or suspends the master note, and it appears in Gaps.
+- **Rules for relation cards in the shared master note:** `siblingsToBury` and `applyLeech` work per note today, and MCP review repeats the leech and burying logic in `mcpWrite.ts`, so both are changed (`applyLeech(card: {id, note}, action)` and `siblingsToBury` take no card content today, so each gains an `isMasterCard` input at every call site: `learn.ts`, `mcpWrite.ts` and the other `applyLeech` callers): (a) burying skips cards of master notes; (b) a leech on a relation card honours the preset's `leechAction`: `suspend` suspends **that card only**, `tag` tags nothing on the master note (a card has no tag of its own), and in both cases the card shows in Gaps by its lapse count.
 - Feedback: diagram colours come from Dexie live queries and change after each answer. A card shared by two masters updates both. A card sits in the queue once even if two entries link it.
 
 ### 8.5 Relation cards (opt-in per arrow)
 
 - A relation card is a card of the master note with `content.edgeId`; asked as "<A> —?→ <B>", answered with the verb and a sentence. It tests how parts connect, which a basic card rarely does.
-- **`syncMasterCards` and `syncPlan` change together (client and server twins, with a parity test):** cards are keyed `s:<sectionId>` or `m` (whole master) for section cards and `e:<edgeId>` for relation cards; the wanted set includes `e:<edgeId>` for every edge with `relation: true`. Card ids are deterministic (like `detId` in `mcpMaster.ts`) so two devices cannot create duplicates. A relation card whose edge is removed or un-flagged is deleted if never reviewed, otherwise suspended and marked `retired` (the existing rule); this also applies when an entry removal drops its edges.
+- **`syncMasterCards` and `syncPlan` change together (client and server twins).** Existing keys are **unchanged** (`sectionId ?? ""`; `planMasterCards` returns `null | string`; the server's deterministic ids are built from `card:${key}`, so renaming keys would break idempotent retries). Only one key kind is added: `e:<edgeId>`, returned by `keyOf` whenever a card has `content.edgeId`; the wanted set includes `e:<edgeId>` for every edge with `relation: true`. Relation-card ids are `uuidv5("e:" + edgeId, noteId)` on **both** sides (the client has no user id, and the server's `replanRows` uses random ids today), so two devices cannot create duplicates; a deleted-then-re-flagged edge reuses the id, so the tombstone rule is checked in the build. A relation card whose edge is removed or un-flagged is deleted if never reviewed, otherwise suspended and marked `retired` (the existing rule); this also applies when an entry removal drops its edges.
+- **One pure planner:** because the client planner runs on Dexie under jsdom and the server one on PGlite under node, one test cannot run both. The build extracts a pure `planCardChanges(existing, want)` into `src/logic/master/` that both call, and the parity test targets that.
 - It never creates one by itself. Cap 30 per master.
 - The note adapter `MasterNote.tsx` gets an `edgeId` branch: the question shows the two boxes with a hidden verb, and the answer shows only that relation (today the answer side shows the whole master).
 - Tags are note-level, so a master tagged `apply` would make every relation card look like Apply evidence: Apply readiness counts **ordinary linked cards only**, never relation cards.
-- Phase 22's "content edit resets the run" does not apply to master notes (a master edit would reset every relation card); a relation card's run resets only when its own edge is changed.
+- Phase 22's "content edit resets the run" does not apply to master notes (`updateNoteContent` skips `type: master`, see Phase 22 7.3); a relation card's run resets only when its own edge is changed.
 
 ### 8.6 What-if (computed from the arrows, no AI)
 
 - Pure `src/logic/master/whatIf.ts`: `downstream(edges, id)`; `scoreWhatIf(truth, predicted)` returns hit, missed, extra and an F1 score.
 - Flow: tap a box to break it, tap everything you think is affected, check. A scenario needs at least 2 boxes downstream of the broken one; the app suggests only those. A master with no such scenario has Predict marked "not applicable" (8.7).
-- **Predict evidence** is one synced setting row **per attempt**, `#predict.<noteId>.<uuid>` = `{ at, brokenEntry, f1 }`, so two devices never overwrite each other's attempts. Mean and last 20 are derived when read; writing a new attempt deletes the attempts beyond the newest 20. Deleting a master (app `deleteNote` and `delete_master_card`) deletes its attempt rows. `SettingsValues` is a closed interface and `useSetting` takes `keyof SettingsValues`, so the build adds a template-literal key type for `#predict.*`. A what-if never touches a card schedule.
+- **Predict evidence** is one synced setting row **per attempt**, `#predict.<noteId>.<uuid>` = `{ at, brokenEntry, f1 }`, so two devices never overwrite each other's attempts. Mean and last 20 are derived when read; writing a new attempt deletes the attempts beyond the newest 20. Deleting a master (app `deleteNote` and `delete_master_card`) deletes its attempt rows; attempts whose broken entry no longer exists are ignored and pruned. `SettingsValues` is a closed interface and `useSetting` reads one key, so these rows are **kept out of** `useSettings` (which reads and reduces the whole table, and would grow with up to 20 rows per master) and out of the server's `world()` settings load: they are read with `db.settings.where("key").startsWith("#predict.<noteId>.")` (client) and a prefix query on `changes` (server). The server's `load()` in `mcpData.ts` returns every settings row with no key filter, so `load` / `world()` must exclude `id LIKE '#predict.%'`, and `record_predict` writes through `putRows` with `tbl: "settings"`. `#` and `.` are valid keys and the sync key path is `key`. A what-if never touches a card schedule.
 
 ### 8.7 Readiness (the K/S idea, per concept)
 
@@ -151,12 +158,14 @@ Pure `src/logic/master/readiness.ts`, used by the app and the server:
 
 | Dimension | Evidence | Untested | Not applicable |
 |---|---|---|---|
-| Recall | mean strength of entries that have a reviewed card, with "n of m untested" shown | no entry has a reviewed card | never |
-| Explain | mean strength of relation cards | the master has relation cards but none reviewed | the master has no arrows |
+| Recall | mean strength of entries that have a reviewed card | no entry has a reviewed card, **or more than 20% of the entries are untested** | never |
+| Explain | mean strength of relation cards | relation cards exist but none is reviewed | the master has no arrows, or has arrows but no relation card (it is optional; shown as "none") |
 | Predict | mean what-if F1 | a scenario exists and none was done | no scenario with 2 or more downstream boxes |
 | Apply | mean strength of ordinary linked cards tagged `apply` | tagged cards exist, none reviewed | no card is tagged `apply` |
 
-"Ready to teach": Recall tested, and every applicable dimension tested and at least 75%. **Untested is not zero** (ADR 0012); the existing `suggestMasterRating` is unchanged (it counts untested entries as 0 for its own purpose, and the sheet shows both numbers with their labels). It is a quick local measure, not a replacement for K/S objectives; a master can be linked to an objective and the tutor skill can read these numbers (`get_master_card`).
+- **Entry strength with several cards = the strength of its weakest reviewed card** (the entry is only as remembered as its weakest card). The sheet shows the per-card numbers in the entry panel.
+- "Ready to teach": Recall tested, and every applicable dimension tested and at least 75%. **Untested is not zero** (ADR 0012); the existing `suggestMasterRating` is unchanged (it counts untested entries as 0 for its own purpose, and the sheet shows both numbers with their labels).
+- It is a quick local measure, not a replacement for K/S objectives; a master can be linked to an objective and the tutor skill can read these numbers (`get_master_card`).
 
 ### 8.8 Gaps, each with a fix
 
@@ -184,7 +193,7 @@ Fixes: study the weakest (`weak.<noteId>`), make a relation card, add a card (ed
 | Diagram edges | edge editor | op `set_edges` | `master.draft_diagram` |
 | Gaps | gaps panel | `master_coverage` extended | `master.fill_gaps`, `cards.add_variety` |
 | Concept, related, tips | builder fields | ops `set_concept`, `set_related`, `set_tips` | none needed |
-| Many cards per entry | entry panel, picker | `add_entry` and `link_cards` accept a list | none needed |
+| Many cards per entry | entry panel, picker | `add_entry` and `link_entry` (the existing master ops) accept a list | none needed |
 
 No part is done until the human and MCP columns both exist and every AI-needing row has its Ask AI action. Diagram drawing, Present and print are human-only by nature.
 
@@ -195,11 +204,12 @@ The Gaps "stuck" check and any run-based hint need the Phase 22 run counter. Eve
 ### 8.12 MCP changes (the part the first version missed)
 
 - **Migration:** add `master_id text` to `mcp_study_sessions` (a new timestamp-named file in `supabase/migrations/`, `ALTER TABLE ... ADD COLUMN IF NOT EXISTS`; the table already has row security). Phase 16.2 adds `tags jsonb` to the same table in its own migration.
-- **Serving cross-deck cards:** `snapshot` filters by deck scope, so with `master_id` the study picker (`pickNext`, `emptyReason`) loads the master's linked card ids directly instead of filtering by deck.
+- **Serving cross-deck cards:** `snapshot` filters by deck scope, so with `master_id` the study picker (`pickNext`, `emptyReason`) loads the master's linked card ids directly instead of filtering by deck. These sessions still apply, per `card.deck`, the Phase 16.1 per-deck new-card budget (`new_budget`), the exclusion of paused decks, and the Phase 22 catch-up clamp.
 - **Relation cards over MCP:** `questionOf` and `answerOf` (`mcpStudy.ts`) and `masterSuggestion` get an `edgeId` branch so a relation card is not asked as "recall everything".
 - `contentOf` spreads the existing content; `get_master_card` returns `concept`, `related`, `tips`, `edges`, entries with all their cards and states, and readiness; `delete_master_card` also deletes the `#predict.<noteId>.*` rows.
 - New ops on `update_master_card` (all checked with the same `validateMaster`): `set_edges`, `set_relation_cards`, `set_concept`, `set_related`, `set_tips`, `record_predict`. The 50-card and request-size limits of `add_cards` do not change.
-- Skill text changes are seeded only into an empty database (ADR 0006): the owner's live default skill must be updated by hand at `/skills/edit` or with `update_skill_file` (scope `default`). Acceptance for each skill step: `get_skill` returns it.
+- **Tests:** seven MCP test files hard-code their migration lists (`appApi`, `mcpEvidence`, `mcpInstructions`, `mcpManage`, `mcpMaster`, `mcpStudy`, `noteHistory`); each gets the new migration.
+- Skill text changes are seeded only into an empty database (`adr/0006-skills-in-postgres-served-over-mcp.md`): the owner's live default skill must be updated by hand at `/skills/edit` or with `update_skill_file` (scope `default`). Acceptance for each skill step: `get_skill` returns it.
 
 ## 9. What changes where
 
@@ -209,26 +219,26 @@ The Gaps "stuck" check and any run-based hint need the Phase 22 run counter. Eve
 | `masterCards.ts`, `builderData.ts`, `builderOps.ts`, `coverage.ts`, `activities.ts`, `suggestRating.ts` | all cards of an entry; edge rewiring; `masterCardsForStudy`; `parseMasterParam`; relation-card keys in `syncMasterCards` |
 | `src/logic/master/whatIf.ts`, `readiness.ts`, `diagramLayout.ts` (new) | pure logic with tests |
 | `src/logic/type-implementations/master/` | `edgeId` branch (question and answer), merge-preserving params |
-| `src/logic/card/CardSorting.ts`, `policy.ts`, `cardControls.ts` | `byMasterOrder`; sibling burying and leech skip master relation cards |
+| `src/app/learn/LearnView/useLearnSession.ts`, `src/logic/card/cardControls.ts`, `policy.ts` | master sessions switch the hard-coded `sort: CardSorts.byCreationDate(1)` to the existing `byCustomOrder(1)` and add the parsed master scope to the hook's `dependencies`; sibling burying and leech skip master relation cards (signature changes, see 8.4) |
 | `src/app/learn/LearnView/` | `master.<id>` and `cram.master.<id>` |
 | `src/app/master/` | sheet, entry and arrow panels, lazy diagram, what-if, gaps, concept view, Present, edge editor, print CSS, grouping in `DeckMastersSection.tsx` |
 | settings | `#predict.<noteId>.<uuid>` with a template-literal key type |
 | `src/server/mcpMaster.ts` (`syncPlan`, `contentOf`, ops, get, delete), `mcpStudy.ts`, `mcpData.ts` | as in 8.12 |
 | `supabase/migrations/` | one: `mcp_study_sessions.master_id` |
-| `src/server/skillSeedLearning.ts` | arrows, relation cards, what-if, session-in-chat steps; then update the live skill |
+| `src/server/skillSeed.ts` (`skola`: arrows, relation cards, what-if and session-in-chat steps) and `skillSeedLearning.ts` (`skola-quality-auditor`, `skola-card-architect` additions); then update the live skills |
 | `package.json`, `next.config.mjs`, `src/sw.ts` | `@xyflow/react`, `@dagrejs/dagre`; confirm the chunk is precached; offline test |
 | tours, InfoTips, `docs/features.md`, `docs/architecture.md`, `docs/gotchas.md`, `docs/fsrs-and-presets.md`, HANDOFF, SPEC row | updated with each step |
 
 ## 10. Build order and done criteria
 
 1. **Data first, nothing visible.** Many cards per entry, new fields, merge-preserving `cleanMaster`, `MasterNote` and `contentOf` spreading, all `cardId` sites on `linkedCardsOf`. *Done when:* a round trip keeps unknown fields; old data reads and saves unchanged; coverage, suggested rating and MCP reads handle many cards per entry; tests cover each listed file. Ship this alone first.
-2. **Session over a master:** `parseMasterParam`, `masterCardsForStudy`, `byMasterOrder`, practice via cram, MCP `master_id` with its migration. *Done when:* a master with cards in two decks serves them in app and MCP, due and new rules hold, cram writes nothing, `pnpm build` passes.
-3. **Sheet, entry panel, read mode,** list view, tags as roles, print.
-4. **Diagram,** edge editor, edge rewiring on entry changes, lazy chunk, precache and offline check, `pnpm build`.
+2. **Session over a master:** `parseMasterParam`, `masterCardsForStudy`, order through `customOrder`, practice via cram, MCP `master_id` with its migration. *Done when:* a master with cards in two decks serves them in app and MCP, due and new rules hold, cram writes nothing, `pnpm build` passes.
+3. **Sheet, entry panel, read mode,** list view, tags as roles, print. *Done when:* each block renders from fixtures (tags, entries, related, tips); read mode writes nothing (asserted); Add a card links the new card to its entry; `pnpm build` passes.
+4. **Diagram,** edge editor, edge rewiring on entry changes, lazy chunk, precache and offline check, `pnpm build`. *Done when:* arrows render from fixtures, the 25-box and 40-arrow caps hold, merge and removal edge tests pass, and the diagram chunk is in the precache and loads offline.
 5. **Relation cards:** `syncMasterCards` and `syncPlan` parity, `MasterNote` branch, leech and sibling rules, arrow panel. *Done when:* a parity test shows client and server plan the same cards for the same master, including retired and restored ones.
-6. **What-if, readiness, gaps,** Present.
-7. **Concept group and related masters.**
-8. **MCP ops and skill steps,** live skill updated, `get_skill` shows them.
+6. **What-if, readiness, gaps,** Present. *Done when:* `scoreWhatIf` and `readiness` tests cover every cell of the table in 8.7 (untested, not applicable, ready); attempt rows are kept out of `useSettings`; each Gaps fix works; Present steps through a fixture master.
+7. **Concept group and related masters.** *Done when:* the label normalisation tests pass (case, spaces), the concept view lists the masters across decks, `related` ids that no longer exist are dropped.
+8. **MCP ops and skill steps,** live skill updated. *Done when:* every op has a PGlite test including an idempotent retry (the request hash covers `cardIds` and edges), the seven test files carry the migration, and `get_skill` returns each new step.
 After each: `pnpm exec biome check --write`, `pnpm lint:type`, `pnpm test`; `pnpm build` for steps 2 and 4; a browser check for every UI step.
 
 ## 11. Approaches considered

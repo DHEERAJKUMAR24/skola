@@ -26,7 +26,7 @@ A free, cloud-hosted, local-first spaced-repetition app for phone and desktop: F
 |---|---|
 | App | Next.js 16 (webpack), React 19, TypeScript; the Skola UI runs client-only (`ssr: false`, hash router) |
 | PWA | Serwist service worker; shell precached, `/api`, `/oauth`, auth pages and `/.well-known` are network-only |
-| Local DB | Dexie (IndexedDB), schema v26 |
+| Local DB | Dexie (IndexedDB), schema v29 |
 | Scheduler | `ts-fsrs` 5.x (FSRS-6). v6 deprecates the `repeat()` API and defaults to FSRS-7 |
 | Server | Next.js route handlers on Vercel (Hobby) |
 | Database | Supabase Postgres (Free), project `skola`, region `ap-south-1`, accessed through `pg` and the Transaction pooler (port 6543) |
@@ -48,7 +48,7 @@ service worker     -- OAuth + PKCE --> /oauth/*, /login, /api/account/* --> (use
 
 ## 5. Data
 
-Client (Dexie v26): `cards`, `decks`, `notes`, `settings`, `presets` (synced; rows get `updatedAt` from Dexie hooks, `src/logic/syncTracking.ts`), `reviewLogs` (append-only), `tombstones` (deletions), `statistics` (local only). Study presets live in `presets` (see fsrs-and-presets.md).
+Client (Dexie v29): `cards`, `decks`, `notes`, `settings`, `presets` (synced; rows get `updatedAt` from Dexie hooks, `src/logic/syncTracking.ts`), `reviewLogs` (append-only), `tombstones` (deletions), `statistics` (local only). Study presets live in `presets` (see fsrs-and-presets.md).
 
 Server (`app/supabase/migrations/20261101000000_init.sql`): `changes` (per-user rows with `seq`), `users`, `password_resets`, `oauth_clients`, `oauth_codes`, `oauth_tokens`. Row-level security is enabled on all of them so Supabase's public anon key cannot read them; the server connects as the table owner.
 
@@ -98,16 +98,17 @@ Server (`app/supabase/migrations/20261101000000_init.sql`): `changes` (per-user 
 | 13 Profile instructions | DONE | Synced `#aiInstructions` with a built-in default, Settings, AI assistants tab, `get_instructions` and `set_instructions` (ADR 0013) |
 | 14 Settings sidebar and in-app skills | DONE | Second sidebar, in-app Connect and Skills editor, `/skills/llm.txt` for agents. Skill editor not tested signed in |
 | 15 Master card | CORE DONE in app, MCP tools and skills DONE 2026-11-06 (ADR 0014) | Hierarchy setting and page, pure coverage engine, `master` note type with editor, study view with suggested rating, notes explorer view, deck menu "Create Master Card", card picker. MCP: create_master_card, get_master_card (repurposed name), list_master_cards, update_master_card, master_coverage, suggest_master_rating, delete_master_card (`src/server/mcpMaster.ts`), study sessions and card tools know the type, skills updated (architect, maintainer, tutor, auditor). App UI 2026-11-06: builder page `/master/:noteId`, graph `/graph`, activities (recall sweep, gap hunt, weak-spot drill), deck Masters tab. Not checked in a browser |
-| 16.1 Deck ergonomics and pacing (MCP) | DESIGN, corrected 2026-11-07 (docs/spec-phase-16.md), recommended: build | Deck paths (`A::B`), rename and re-parent, daily limits applied to MCP sessions, `boost_new_today`, `get_limits`, `set_limits`, notes on tool responses, `comes_back_in_ms`, `structuredContent.code`, `grading_mode`. No deck migration (decks are JSON rows); archive is cut (paused exists) |
+| 16.1 Deck ergonomics and pacing (MCP) | DESIGN approved 2026-11-07, plan written (docs/superpowers/plans/2026-11-07-phase-16-1.md); build next | Deck paths (`A::B`) inside the existing deck tools (`update_deck` already renames and re-parents), daily limits and paused decks applied to MCP sessions (one migration, a `#timeZone` setting), `boost_new_today`, `get_limits`, `set_limits`, notes on tool responses, `comes_back_in_ms`, `structuredContent.code`, `grading_mode`. No deck migration (decks are JSON rows); archive is cut (paused exists) |
 | 16.2 Study and note enhancements | DESIGN, corrected 2026-11-07 (docs/spec-phase-16.md), recommended: build smaller | `tags[]` filter for study sessions (one migration), history 90 days / 20 versions. `basic_typed`, speech blocks and HTML fields deferred |
 | 16.3 MCP UI panel bridge | DEFERRED 2026-11-07 (docs/spec-phase-16.md section 5) | No MCP-UI contract exists in the code; reminders would need a cron |
 | 17 Import and export | DESIGN, corrected 2026-11-07 (docs/spec-phases-17-20.md), recommended: CSV in the browser now, `.apkg` import later, `.apkg` export cut | One round-trippable CSV format, preview before writing, formula-injection prefix; no review history exported |
 | 18 Security hardening | DESIGN, corrected 2026-11-07 (docs/spec-phases-17-20.md), recommended: reduced | Refresh-token grace window and purge (rotation and replay already exist); magic-byte check on upload confirm; passkeys deferred |
 | 19 Multi-user invite | DEFERRED 2026-11-07 (docs/spec-phases-17-20.md section 6) | No stated user problem |
 | 20 Stats dashboard | DESIGN, corrected 2026-11-07 (docs/spec-phases-17-20.md section 3), recommended: build | Replaces the placeholder `StatsView` at the existing `/stats` route; streak, retention, heatmap, forecast from local data; CSS and SVG, offline |
-| 22 Targeted review and card fusion | DESIGN, waiting for approval 2026-11-07 (docs/spec-targeted-review.md) | Run counter on each card (3 right in a row = ready to upgrade, 3 wrong = stuck); targeted review page: go deeper or delete stuck cards, fuse 2-3 ready cards into one higher-order question (AI drafts, learner approves), originals stay in study, linked; filter before a card is made; weekly budget and catch-up mode. No server tables, no cron |
+| 21 (dropped) | Background jobs, dropped 2026-11-07 | Non-goal N3: no cron, polling or workers |
+| 22 Targeted review and card fusion | DESIGN, waiting for approval 2026-11-07 (docs/spec-targeted-review.md) | Run counter on each card (3 right in a row = ready to upgrade, 3 wrong = stuck); targeted review page: go deeper or delete stuck cards, fuse 2-3 ready cards into one higher-order question (AI drafts, learner approves), originals stay in study, linked; filter before a card is made; card budget (new cards per week) and catch-up mode. No server tables, no cron |
 | 23 Master card: concept sheet, session, relations, what-if | DESIGN, waiting for approval 2026-11-07 (docs/spec-master-card.md, ADR 0016 proposed; research in docs/research-master-card-visual-revision.md) | The master is a lens over the learner's cards: a sheet (diagram, key points, examples, pitfalls, tips, related concepts) that is read-only; many cards of any type per entry; a session through `/learn` on the real cards in diagram order; opt-in relation cards (cards of the master note); a what-if test computed from the arrows; gaps with fixes; readiness (Recall, Explain, Predict, Apply; untested is not zero); concept group and related masters; flow diagram with @xyflow/react + @dagrejs/dagre (lazy). Originals stay in study. No self-marked quiz, no cron; one small migration for the MCP session (`mcp_study_sessions.master_id`) |
-| 24 Ask AI (copy a prompt, open your assistant) | DESIGN, waiting for approval 2026-11-07 (docs/spec-ask-ai.md) | One button and one prompt builder for every AI-needing feature: copies a short prompt (ids and names only) and opens the user's assistant, which works through MCP; user-editable assistant list (`#aiTargets`) with research-based defaults; rule: human UI, MCP and Ask AI must all exist for an AI feature. No AI key, no server tables |
+| 24 Ask AI (copy a prompt, open your assistant) | DESIGN, waiting for approval 2026-11-07 (docs/spec-ask-ai.md) | One button and one prompt builder for every AI-needing feature: copies a short prompt (ids only) and opens the user's assistant, which works through MCP; user-editable assistant list (`#aiTargets`) with research-based defaults; rule: human UI, MCP and Ask AI must all exist for an AI feature. No AI key, no server tables |
 
 ## 8. Accounts and keys
 
@@ -142,7 +143,7 @@ Never paste secrets into chat; keep them in git-ignored `.env.local` and in Verc
 
 1. Confirm the production deploy of `main` is Ready and smoke test sign-in, sync and `/mcp`.
 2. Test with a real MCP client; re-paste the default `skola` skill row.
-3. Owner approves or changes Phases 22 to 24 (docs/README.md lists the designs); then plan and build in the order recommended in section 12.
+3. Owner approves or changes the designs for Phases 16 to 24 (docs/README.md lists them); then plan and build in the order recommended in section 12.
 4. Resend domain, real R2, Phase 3 hardening.
 
 ## 12. Recommended build order (not a decision: the owner approves the designs first)
@@ -154,3 +155,7 @@ All Phase 16 to 24 documents were reviewed against the code on 2026-11-07; `docs
 - Phases 22 and 23 both edit `skillSeedLearning.ts`; deliver skill text to the live database after each (ADR 0006).
 
 Order: 1. Phase 16.1. 2. Phase 24 core (button, builder, `#aiTargets`). 3. Phase 22 steps 1 to 2 (run counter and lists; check real-data yield first). 4. Phase 23 steps 1 to 3 (many cards per entry, session, sheet). 5. Phase 22 fusion and catch-up, then Phase 23 steps 4 to 8, each adding its Ask AI actions. 6. Phase 20, then Phase 17 (CSV), then 16.2. 7. Phases 16.3, 17 (`.apkg`), 18 and 19 only on demand.
+
+### How far the review can be trusted, and what each builder does first
+
+The designs for Phases 16 to 24 went through three independent review rounds against the code on 2026-11-07, each by fresh reviewers who read the real files; every round found fewer problems than the one before, and the last round's findings were fixed. A review by reading cannot prove a design correct: nothing has been built, run or tested. So each build step starts with a **verify-first checklist**: before writing code, re-check every file, function, field and behaviour that step's spec section names (a `grep` and a read each), fix the spec text in the same change if reality differs, and write the failing tests first. The code can change between now and the build, and the spec is a plan, not a proof.

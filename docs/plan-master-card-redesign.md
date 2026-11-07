@@ -10,7 +10,7 @@
 2. **Linked-card scoring.** Per-entry recall becomes a review on the entry's card; one rating copied to all cards is ruled out. Open: how early reviews (card not yet due) are handled, and whether Hard exists on a got-it/missed mark.
 3. **Diagram.** Which first: structure map, process flow, or both; Mermaid was considered and rejected; the owner approved @xyflow/react with dagre. Box id = entry id so Revise can hide labels.
 4. **"A group of masters per concept".** The default hierarchy (Domain, Subject, Chapter, Concept) makes Concept a single entry inside a master. Rename levels, or let a master sit under a concept.
-5. **AI button.** "Ask AI" builds a prompt (ids and names only, no card text), copies it, opens the chosen assistant; the assistant works through MCP and results sync back (drafts wait for approval). Which action first.
+5. **AI button.** "Ask AI" builds a prompt (ids only, no names or card text), copies it, opens the chosen assistant; the assistant works through MCP and results sync back (drafts wait for approval). Which action first.
 
 ## Steps
 

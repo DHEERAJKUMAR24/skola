@@ -14,14 +14,14 @@ Single source of truth for "where are we". Rewrite the sections below at the end
 - Deployed earlier today (separate from this work): `main` pushed; Vercel project `skola-app` under the `zero2hero` account; the production database migrations 20261102 and 20261103 were applied by the owner; the demo-account seed (`pnpm db:seed`) was waiting on a stuck database connection; R2 access keys are still empty in `.env.local`.
 - Owner asked for R&D on making flashcards better at higher-order learning and less overwhelming. Used `superpowers:brainstorming` (installed at user scope) with research agents; the BMAD PM skill needs `_bmad/` scaffolding that is not set up here, so its product-manager lens was applied by hand.
 - New designs, all **waiting for the owner's approval** (read `docs/README.md` for the index):
-  - Phase 22 `docs/spec-targeted-review.md`: run counter on cards (3 right in a row = ready to upgrade, 3 wrong = stuck), targeted review page, fused questions (AI drafts over MCP, learner approves; originals stay in study), filter before a card is made, weekly budget and catch-up mode as a read-time override.
-  - Phase 23 `docs/spec-master-card.md` and proposed `docs/adr/0016-master-card-lens-over-cards.md`: the master as a lens over the learner's cards (sheet, many cards per entry, session through `/learn/<deck>/master.<noteId>`, opt-in relation cards, what-if, readiness, concept group, flow diagram with `@xyflow/react` + `dagre`). Replaces the first "Revise with self-marked hidden entries" draft, which the owner rejected after trying a prototype.
-  - Phase 24 `docs/spec-ask-ai.md`: one "Ask AI" button for every AI-needing feature: copy a short prompt (ids and names only) and open the user's assistant, which works through MCP. Rule: human UI, MCP and Ask AI must all exist.
-- **Full pre-build review (2026-11-07, later):** five independent reviewers checked every not-yet-built spec against the code and found many wrong claims (deck storage, MCP limits, existing auth and media code, existing `/stats` route, the master card's `cardId` sites, relation cards vs `syncMasterCards`, the run counter's write path). Fixes: `spec-targeted-review.md` and `spec-master-card.md` rewritten; `spec-ask-ai.md` corrected; Phase 16 and Phases 17 to 20 rewritten as `spec-phase-16.md` and `spec-phases-17-20.md` (the old text in `spec-comparison-flash-deep.md` now carries a banner and must not be used to build); ADR 0017 proposed. Scope recommendations (defer 16.3, 18.1, 19, `.apkg`; cut archive) await the owner. A second review round of the corrected specs followed.
+  - Phase 22 `docs/spec-targeted-review.md`: run counter on cards (3 right in a row = ready to upgrade, 3 wrong = stuck), targeted review page, fused questions (AI drafts over MCP, learner approves; originals stay in study), filter before a card is made, card budget (new cards per week) and catch-up mode as a read-time override.
+  - Phase 23 `docs/spec-master-card.md` and proposed `docs/adr/0016-master-card-lens-over-cards.md`: the master as a lens over the learner's cards (sheet, many cards per entry, session through `/learn/<deck>/master.<noteId>`, opt-in relation cards, what-if, readiness, concept group, flow diagram with `@xyflow/react` + `@dagrejs/dagre`). Replaces the first "Revise with self-marked hidden entries" draft, which the owner rejected after trying a prototype.
+  - Phase 24 `docs/spec-ask-ai.md`: one "Ask AI" button for every AI-needing feature: copy a short prompt (ids only) and open the user's assistant, which works through MCP. Rule: human UI, MCP and Ask AI must all exist.
+- **Full pre-build review (2026-11-07, later):** five independent reviewers checked every not-yet-built spec against the code and found many wrong claims (deck storage, MCP limits, existing auth and media code, existing `/stats` route, the master card's `cardId` sites, relation cards vs `syncMasterCards`, the run counter's write path). Fixes: `spec-targeted-review.md` and `spec-master-card.md` rewritten; `spec-ask-ai.md` corrected; Phase 16 and Phases 17 to 20 rewritten as `spec-phase-16.md` and `spec-phases-17-20.md` (the old text in `spec-comparison-flash-deep.md` now carries a banner and must not be used to build); ADR 0017 proposed. Scope recommendations (defer 16.3, 18.1, 19, `.apkg`; cut archive) await the owner. Two further review rounds of the corrected specs followed and their findings were fixed (three rounds in all); `SPEC.md` section 12 now ends with a verify-first rule for every build step.
 - Corrected facts found on the way: review logs DO sync (client pushes them by `reviewedAt`; ADR 0008 updated); no cron anywhere (non-goal N3 wording, Phase 21 dropped); Mermaid rejected for the diagram.
 - Prototype (private artifact, example JavaScript-interview data): https://claude.ai/artifact/LB11bBALWCHYWcV4WySC75. It predates the sheet-blocks and related-masters part of the Phase 23 design and uses plain SVG.
 - Unverified: prompt-link formats for assistants other than Claude desktop (unofficial; need the Test button in a browser), diagram chunk precache and offline behaviour, `@xyflow/react` bundle size.
-- Next: owner approves (or changes) Phases 22 to 24; then `superpowers:writing-plans` and the build order in `spec-master-card.md` section 10 (start with many cards per entry, then the session route); the review-path code does not need extracting, because the master session reuses `/learn`.
+- Designs approved by the owner (2026-11-07). Implementation plans: `docs/superpowers/plans/2026-11-07-roadmap.md` (all milestones) and `2026-11-07-phase-16-1.md` (detailed, 14 tasks). Waiting for the owner to choose an execution method. Old line: owner approves; then writing-plans. Build order: `SPEC.md` section 12 (Phase 16.1 first; for the master card start with step 1, data only, shipped alone).
 - Uncommitted: the new and changed docs listed above.
 
 ## Session 2026-11-07 (Deep Flash vs Skola++ comparison + gap-closing spec)
@@ -33,7 +33,7 @@ Single source of truth for "where are we". Rewrite the sections below at the end
   - Skola UI/Schema: 11 UI routes, Dexie v22–v29, Postgres 15 tables, 7 note types, all 5 skill seeds verbatim
 - Installed BMAD-METHOD skills: `bmad`, `bmad-deep-recon` (REA), `bmad-agent-analyst`, `bmad-agent-pm`, `bmad-agent-architect` via `npx skills@latest add`
 - Read Flash's Rust source directly: `study_tools.rs`, `card_tools.rs`, `deck_tools.rs`, `args.rs`, `out.rs`, `speech.rs`, `MCP.md` — not just the hosted MCP endpoint
-- Created `docs/spec-comparison-flash-deep.md` — the authoritative gap-closing spec covering:
+- Created `docs/spec-comparison-flash-deep.md` (analysis and reference only; the build specs are now `spec-phase-16.md` and `spec-phases-17-20.md`) covering:
   - Full tool-by-tool comparison (all 26 Flash vs all 56 Skola++ tools, with parity status)
   - AI skills comparison (Flash: 1 static prompt; Skola++: 5 dynamic versioned skills)
   - Architecture gaps: auth (WebAuthn), storage (content-addressed SHA256), card history (7d→90d), Anki import/export
@@ -48,7 +48,7 @@ Single source of truth for "where are we". Rewrite the sections below at the end
     - Goal data in `list_decks` output per deck
     - All study + card tool descriptions rewritten as conversational action guides
   - Phase 16.1–19 implementation plans with file paths, schema changes, test requirements
-  - 6 new ADRs needed (0016–0021)
+  - 6 new ADRs needed (0016–0021) (superseded: 0016 to 0018 now exist for other decisions; the rest are not written)
   - Skola++ superiority checklist showing 63+ tools, 8 card types, K/S mastery framework vs Flash's 26 tools, 2 card types
 - Updated `docs/SPEC.md`: Phase 16 split into 16.1/16.2/16.3 + added Phases 17/18/19 (all SPEC DONE)
 - Also completed (earlier this session): dark mode FOUC fix (blocking inline script in layout.tsx + CSS @media fallback + useTheme.ts localStorage write); Gmail SMTP configured for forgot-password emails (`orbitproject270@gmail.com`); Flash ref repo cloned at `D:/Workspace/z-personalWorkspace/flash-ref`
@@ -65,7 +65,7 @@ Single source of truth for "where are we". Rewrite the sections below at the end
   - **Data model invariants** (11.21): MAX_DECKS_PER_USER=500; path creation atomic; can't create under archived parent; `%` and `_` literal in names; revisions hard-capped 20/90days; API token grace window; language learning vs choosing
   - **Anki template rendering** (11.22): `{{FrontSide}}` renders empty; `{{hint:}}` → `<details>`; cloze processed before template; known filter set
   - **10 lower-priority files** remain (see Section 11.23 — not blockers for Phases 16–21)
-  - Added Phase 21 (background jobs), ADRs 0030–0035
+  - (Superseded: Phase 21 was dropped and the ADR placeholders are renumbered; see `docs/spec-phase-16.md`.)
 
 **Session 3 — full cavecrew sweep; additional findings added as Sections 11.1–11.15:**
 - Installed `cavecrew` skill; ran 7 parallel Explore agents against all unread Flash Rust source files
@@ -86,7 +86,7 @@ Single source of truth for "where are we". Rewrite the sections below at the end
   - **`speech_by IN ('assistant','labeler')`** on notes — tracks who generated speech
   - **`front_lang`/`back_lang`** on notes — BCP 47 language tags for TTS
   - **15 unread files remain** (documented in Section 11.15) — `jobs.rs`, `repo/reviews.rs`, admin API etc.
-  - Added Phase 20 (stats dashboard), ADRs 0022–0029, `list_tags` MCP tool, CSV import to Phase 17
+  - Added Phase 20 (stats dashboard), ADRs 0022–0029 (superseded placeholders, not written), `list_tags` MCP tool, CSV import to Phase 17
 
 **Session 2 — corrections applied to `spec-comparison-flash-deep.md` after reading all Rust source:**
 - FSRS version corrected: Flash uses `fsrs = "6.6.1"` (FSRS v6, `FSRS6_DEFAULT_DECAY`) — both systems are on v6; the comparison axis is policy + UX not algorithm version
@@ -137,11 +137,12 @@ FSRS-6 with policy overlay; presets with easy days, leech, sibling burying, dail
 1. Confirm the Vercel production deploy of `main` is Ready; smoke test sign-in, sync and `/mcp` on the live URL.
 2. Re-paste the default `skola` skill row at `/#/settings/skills` (admin); the four learning skills are already seeded. Test the editor signed in.
 3. Test the MCP with a real client (Claude, ChatGPT): study session, history, evidence, instructions.
-4. Master card (ADR 0014): core DONE (hierarchy setting, coverage engine, master note type, review with suggested rating, minimal create and picker; unchecked in a browser). MCP tools DONE 2026-11-06 (see the session note below; `get_master_card` now returns real masters, the alias is removed). Still to do: builder UI, graph view and links, activities (other agents were on these).
+4. Master card (ADR 0014): core DONE (hierarchy setting, coverage engine, master note type, review with suggested rating, minimal create and picker; unchecked in a browser). MCP tools DONE 2026-11-06 (see the session note below; `get_master_card` now returns real masters, the alias is removed). Builder UI, graph view and activities were built later (2026-11-06) (other agents were on these).
 5. Check the new screens in a browser (see Unverified), then paste nothing: no migration or skill change is needed for them.
 6. Done 2026-11-06 (uncommitted): `find_similar_cards`, `add_cards` type `reverse`, tool rename, and ADR 0015 (Accepted: workflows are skills plus the study-session state machine, no engine; the owner can reverse it; the ADR lists what is not covered). Still to do: paste the new skill texts at `/#/settings/skills` (the old default `skola` row does not update itself).
 7. Production setup: Resend domain, real R2 key and `R2_*` variables, `SKILL_ADMINS`, region `bom1`.
-8. Phase 3 hardening (sync indicator, tombstone gap, per-field merge, review-log sync); Phase 6 and 8 open items in SPEC.
+8. Phase 3 hardening (sync indicator, tombstone gap, per-field merge); Phase 6 and 8 open items in SPEC.
+9. Owner reviews and approves (or changes) the corrected designs for Phases 16 to 24 listed in `docs/README.md`; the build order is `SPEC.md` section 12 (16.1, then Ask AI core, run counter, master steps 1 to 3, ...).
 
 ## Session 2026-11-06 (Obsidian graph + skills defaults, committed 51a3829)
 - **Graph animation:** replaced static `forceLayout` with `createSimulation()` — incremental velocity-based physics with RAF loop. Alpha decays 0.95/step, early exit at alpha < 0.001 or maxV² < 0.01. 30 sync steps before first paint avoid "all at origin" flash. Steps/frame auto-scales (`max(1, min(8, 50000/n²))`) to stay CPU-bounded. Obsidian visuals: dark `#0d1117` canvas, blurred glow halos (CSS `filter: blur(5px)` on `<circle>`), dot-grid SVG pattern, radial vignette overlay, hover/select dimming (non-neighbors dim to 0.12 opacity), pulsing ring on selected node, radial gradient node fills, `drop-shadow` on hover/selected.
@@ -182,7 +183,7 @@ Older notes (1 to 5 above were replaced; the items below are still valid backgro
 ## Open questions for the owner
 - Verified sending domain for Resend (needed for production reset emails).
 - Vercel function region (suggest `bom1`, next to Supabase `ap-south-1`).
-- Whether review logs and statistics should sync later (currently local only).
+- Whether the client should also pull other devices' review logs for stats (they sync to the server already; see the ADR 0008 update).
 
 ## Known issues
 - Nested `<button>` hydration warning in the sidebar deck list (pre-existing, cosmetic).

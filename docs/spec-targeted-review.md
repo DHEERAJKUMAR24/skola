@@ -43,7 +43,7 @@ The thinking the learner does (deciding what matters, connecting) is the learnin
 
 - Local-first: the app reads and writes Dexie; the server is a sync relay. Review logs sync (pushed by `reviewedAt`), so numbers computed from them are as fresh as each device's last pull.
 - No cron, polling or background worker (SPEC N3).
-- FSRS policy may only change `due` and `scheduled_days` (ADR 0006).
+- FSRS policy may only change `due` and `scheduled_days` (`adr/0006-fsrs-overlay-policy.md`).
 - Every new setting gets an `InfoTip`; the new page gets a tour entry; logic gets Vitest tests (PGlite for server code); docs updated with the build (SPEC, HANDOFF, ADR 0017).
 
 ## 6. Approaches considered
@@ -64,7 +64,7 @@ Run tracking: computing "3 in a row" from review logs means scanning each card's
 - **Written inside the same Dexie transaction as the review,** not in `afterAnswer`. `updateCardModel` already writes the card model and the review log in one transaction (`src/logic/card/updateCardModel.ts`). The run update joins it: it reads the card's current `run` and `model.state` from Dexie inside the transaction (not from the snapshot passed by `useLearning`, which can be stale), applies the pure rule, and writes `run` with the model. A crash between review and run cannot lose the update, and a card whose deck options did not load still counts (`afterAnswer` returns early without options).
 - MCP: the same pure rule is applied where `grade_card` and `submit_review` write the card row (`src/server/mcpWrite.ts`, study session submit).
 - **Rule** (pure function in `src/logic/scheduling/run.ts`, with tests): only a review of a card whose state before the answer was Review counts; Again sets the run to -1 (or one lower if already negative); Hard, Good or Easy raises a non-negative run by one (a negative run restarts at +1). Learning and relearning steps never count, so one sitting cannot build a fake run. Cram reviews never count.
-- Thresholds: preset fields `upgradeAfter` and `stuckAfter` (default 3; 0 turns that list off), inherited like other preset fields. They must be added to `src/logic/deck/presets.ts`, `presetForm.ts`, `effectiveOptions.ts`, and the field map of `update_preset` in `src/server/mcpManage.ts`, with InfoTips.
+- Thresholds: preset fields `upgradeAfter` and `stuckAfter` (default 3; 0 turns that list off), inherited like other preset fields. They must be added to the `DeckOptions` type (`src/logic/deck/deck.ts`), the preset type and `PRESET_DEFAULTS` (`presets.ts`), `presetForm.ts` and the `PresetEditor.tsx` form, the fixed field list in `effectiveOptions.ts` (a field missing there is silently ignored), the field map of `update_preset` and the outputs of `list_presets` and the effective-options output in `src/server/mcpManage.ts`, with InfoTips. Presets already stored have no such fields, so every read uses `?? 3`.
 - Multi-device: cards sync as whole rows, last write wins, so a suspend or edit on another device can overwrite a run. Accepted: the worst case is a card appearing in a list a little late or early.
 - Yield: with FSRS intervals, three Review-state answers can take weeks, so the Ready list may fill slowly. The build checks this on the owner's real data before building the page (build step 1 shows the counts on the deck page first).
 
@@ -99,16 +99,22 @@ Ready to upgrade   (pick 2 or 3)
 
 - **Go deeper:** three optional boxes saved on the note as `deeper: { why, connects, analogy }`. Every card of that note shows it on the answer side as a collapsed "Deeper" section (one shared component, not a change per renderer). Saving `deeper` resets the run of that note's cards.
 - **Rewrite** opens the editor; **Delete** uses the normal delete.
-- **Content edits reset the run** (a changed card is a new test). Every content save goes through `updateNoteContent` (`src/logic/note/`): the reset is added there, covering all cards of the note including cloze siblings, and the build step replaces any direct `db.notes.update` of content with it. Over MCP, `edit_card` / `editNote` (`src/server/mcpNotes.ts`) resets `run` in the card rows it writes. A tag-only or suspend-only change does not reset it.
+- **Content edits reset the run** (a changed card is a new test). The reset is a single rule applied at these write paths, and each is listed with a test:
+  - the app: `updateNoteContent` (`src/logic/note/`) runs one transaction over the note and `db.cards.where("note")` and resets `run` on all of the note's cards (cloze siblings included); the unused second path in `updateNote.ts` is deleted;
+  - MCP: `edit_card` in `src/server/mcpWrite.ts` (not `mcpNotes.ts`, whose `editNote` only returns content) builds **one row per card id**, applying the run reset and any `suspended` change to the same row (two rows for one id make `putRows` throw "A concurrent write won");
+  - `restore_card_version` (MCP, and the app's History modal through `appApi.ts`) writes content, so it resets too.
+  **Exemptions:** a tag-only or suspend-only change; the picture migration (`media.ts` writes with `db.notes.update` directly, so it never reaches the reset); the cloze and image-occlusion flows that call `updateNoteContent` when a card is deleted (`ClozeNote.tsx`, `ImageOcclusionNote.tsx`), which pass `resetRun: false` so the surviving siblings keep their runs; and **master notes** (`MasterNote.tsx` calls `updateNoteContent` on every master edit, which would reset every card of the master): `updateNoteContent` skips `type: master`.
+  `updateNoteContent` writes only the cards whose `run` is non-zero (an autosave burst must not rewrite every sibling card and flood sync). **Row merging:** `putRows` throws when two rows target one card id (`mcpData.ts`), so every MCP path merges its rows by card id before writing: `edit_card` (run reset, `suspended`, new cloze cards) and `restore_card_version` (content plus the master re-plan rows from `replanRows`). `submit_review` calls `gradeCard` (`mcpStudy.ts`), so the run is updated **once, in `gradeCard`** only.
+  **A card reset to New** (`resetCard` in `cardControls.ts`, the `set_card_schedule` reset in `mcpManage.ts`) also clears `run`, so a reset card does not stay in the Stuck list.
 - **Master notes:** `edit_card` refuses content edits of a master (use `update_master_card`), so "deeper" for a master's own cards (including relation cards of Phase 23) is done in the builder in the app, not over MCP. Accepted.
-- Ready cards are grouped by deck, then first tag. In the app, hints only say which cards share a tag, deck or note link.
+- Ready cards are grouped by deck, then first tag. Relation cards and a master's own cards may appear in Stuck but are never offered in Ready as fusion sources (they are not eligible, 7.4). In the app, hints only say which cards share a tag, deck or note link.
 
 ### 7.4 Fusing
 
 > **Owner decision (2026-11-07): the original cards stay in study, linked to the fused card; they are never retired or removed.** Answering a fused card does not touch its sources.
 
-- **Data:** a normal basic note with two new optional fields on `NoteSkeleton`: `fusedFrom?: string[]` (source **card** ids) and `fusionDraft?: boolean`; and `linkedNotes` to the sources' notes.
-- **Eligible sources:** 2 or 3 cards, each existing, not suspended, not a master's own card, not in another pending draft. They may come from different decks; the fused card goes in a deck the learner picks (default: the deck most sources are in).
+- **Data:** a normal basic note with two new optional fields on `NoteSkeleton`: `fusedFrom?: string[]` (source **card** ids) and `fusionDraft?: boolean`; and a one-way `linkedNotes` entry on the **fused note only** pointing at the sources' notes (`linkNotes` writes both notes, which would touch the sources, so it is not used). A draft gets its deck at draft time: the deck most sources are in, with `note.deck` and `deck.notes` set then; approval creates the card in `note.deck`.
+- **Eligible sources:** 2 or 3 cards, each existing, not suspended, not a master's own card (section or relation card), not in another pending draft (a draft note lists its source ids in `fusedFrom`). They may come from different decks; the fused card goes in a deck the learner picks (default: the deck most sources are in).
 - **Start:** the fused card is a normal New card with normal learning steps and it **counts against the new-card limit like any card** (no special flag; catch-up holds new cards back like others). *Changed from an earlier draft:* an exemption would need a card flag and changes to `limitNewCards` and the today-activity count for little gain.
 - **Sources stay in study.** Nothing is suspended or hidden. A source keeps its own schedule and run. The ready list marks sources that already have a fused card; the notes explorer shows "fused into". The learner may suspend sources with the existing bulk bar. Consequence: fusing does not shrink the card count by itself; the card budget, the stuck list and deleting cards "not worth knowing" do that.
 - **Deleted sources:** nothing is cleaned up. `fusedFrom` ids that no longer exist are ignored and shown as "deleted source".
@@ -125,23 +131,24 @@ Ready to upgrade   (pick 2 or 3)
 
 > **Precedence:** limits are read in this order: the preset, then a daily boost (`#dailyBoosts`, Phase 16.1), then catch-up, which overrides both while on.
 
-- **Card budget** (replaces the earlier "weekly review count", which a normal 200-reviews-a-day preset would always exceed): setting `#cardBudget`, default 35, counts **new cards created in the last 7 logical days** (`creationDate` of cards, rolling, day start from `#newDayStartHour`). Over budget two weeks running shows "You may be putting too much on cards" with a link to the targeted review page. Computed locally when the home page opens; no review logs needed.
+- **Card budget** (replaces the earlier "weekly review count", which a normal 200-reviews-a-day preset would always exceed): setting `#cardBudget`, default 35, counts **new cards created in the last 7 logical days** (`creationDate` of cards, rolling, day start from `#newDayStartHour`). Over budget means the count of cards created in days 0 to 6 exceeds the budget; over budget two weeks running means days 7 to 13 also exceeded it. That shows "You may be putting too much on cards" with a link to the targeted review page. Computed locally when the home page opens; no review logs needed.
 - **Catch-up:** one switch, synced setting `#catchUp: { on: boolean }`, a **read-time override** (presets are never changed, nothing to restore):
-  - While on: effective new cards per day 0, and **a total of 100 reviews a day across all decks.** The app's limits are per deck today (`limitNewCards` takes a per-deck map, `src/logic/scheduling/policy.ts`), so the total is a new cross-deck cap in `useLearning`: it subtracts today's reviews of all decks (`useTodayActivity` already counts per deck; sum them) from 100 and trims the review list.
-  - MCP: the study tools take caller-supplied `limit` and `new_limit` today and do not read presets. While catch-up is on they clamp `new_limit` to 0 and `limit` to what is left of 100 today, counted from the synced review logs; `get_limits` (Phase 16.1) reports the state.
+  - While on: effective new cards per day 0, and **a total of 100 reviews a day across all decks.** A *review* here is a Review-state answer (what `useTodayActivity` counts); learning and relearning answers are uncapped, exactly as in the app today (`learn.ts` skips all caps for them and trims only the due Review cards). The app's limits are per deck (`limitNewCards`, `policy.ts`), so the total is a new cross-deck cap in `useLearning`: sum `today.reviewed` over all decks (not `reviewedByDeck`, which covers only the cards in scope), subtract from 100 and trim the due list.
+  - MCP: **clamp the effective limits** while catch-up is on: new cards 0, and the reviews served to what is left of 100 today, counted by the Phase 16.1 rule from the synced review logs. This applies to `start_study_session`, `get_due_cards` **and `grade_card`** (which is otherwise unbounded). `get_limits` (Phase 16.1) reports the state.
+  - **Counting:** this is a different query from the Phase 16.1 "new cards seen" rule: it counts Review-state answers (state before the answer = Review), not distinct cards, excluding manual rows, as `useTodayActivity` does. It is bypassed in sessions that use `learnAll` or cram (the weak drill, scoped master sessions, practice), which the learner chose on purpose; the daily sessions are capped.
   - **It never switches itself off.** When the overdue count across decks is under 100 the study screen shows "You have caught up: turn catch-up off" with a button; MCP reports `catch_up_done: true`. A user action writes the setting, so reading never writes and two devices cannot race to write it. Offline toggles on two devices resolve last write wins (accepted).
 - The AI cannot raise the 100: `set_catch_up` only switches it on or off.
 
 ### 7.7 MCP
 
 - `list_targeted_review` (deck optional): the two lists with run counts and `fused_into` where there is one.
-- `draft_fusions` (groups of 2 or 3 source card ids, each with question and answer): saves each as a pending note (`fusionDraft: true`, its card suspended) without touching the sources. Drafts sync and appear under "Drafts to approve", where the learner edits and approves or rejects.
-  - **Approve** (one transaction): clear `fusionDraft` on the note, unsuspend its card; first re-check that every source still exists and is not suspended (show an error if not).
+- `draft_fusions` (groups of 2 or 3 source card ids, each with question and answer): saves each as a **note-only record** (`fusionDraft: true`, **no card yet**) without touching the sources. Drafts sync and appear under "Drafts to approve" (and in the notes explorer marked as drafts), where the learner edits and approves or rejects. A note with no card is never studied, and because the card does not exist, no unsuspend path (`edit_card`, `bulk_update_cards`, the scheduling modal) can release a draft by accident.
+  - **Approve** (one transaction): first re-check that every source still exists and is not suspended (show an error if not), then create the note's card and clear `fusionDraft`.
   - **Reject:** delete the draft.
   - A source already in a pending draft is refused when drafting (best effort; there is no server constraint, so two assistants at once can still collide, and approval re-checks).
-- `fuse_cards` (2 or 3 source card ids, question, answer): fuses at once, for when the learner approved the wording in the chat. The skill says show the draft and wait for a yes; the server cannot prove it.
-- Error codes (`mcpError` data): `fusion_bad_count`, `fusion_source_missing`, `fusion_source_ineligible`, `fusion_source_in_draft`.
-- `get_card` and study tools report `run`.
+- `fuse_cards` (2 or 3 source card ids, question, answer): creates the note and its card at once, for when the learner approved the wording in the chat. The skill says show the draft and wait for a yes; the server cannot prove it.
+- Error codes, in the existing `[code] message` form with the additive `structuredContent.code` of Phase 16: `fusion_bad_count`, `fusion_source_missing`, `fusion_source_ineligible`, `fusion_source_in_draft`.
+- `get_card_details` and the study tools report `run`.
 - `edit_card` reads and writes `deeper` for ordinary notes (not masters, see 7.3).
 - `set_catch_up` (on or off) returns the state; `get_limits` includes it once built.
 - Ask AI (`docs/spec-ask-ai.md`) builds prompts for `fusion.draft` and `card.rewrite_stuck`.
@@ -151,14 +158,14 @@ Ready to upgrade   (pick 2 or 3)
 - Reviews reach `updateCardModel` from every route that uses `useLearning`: normal study, the `weak.<noteId>` param of `/learn/:deckId/:params`, and the Phase 23 `master.<noteId>` param. Cram reviews never count.
 - `run` is optional card data; older devices ignore it; no Dexie version unless an index is added later (7.2).
 - Settings are keys in the synced `settings` table (key path `key`), so they need no schema or server whitelist change; each new key (`#cardFilter`, `#cardBudget`, `#catchUp`) is added to `SettingsValues` and `defaultSettings` in `src/logic/settings/` and gets an InfoTip.
-- Skill text changes are seeded only into an empty database (ADR 0006): the owner's live default skill must be updated by hand at `/skills/edit` or with `update_skill_file` (scope `default`). Acceptance for each skill change: `get_skill` returns the new step.
-- **How this fits with masters:** fusing is the quick, ad-hoc way to turn two or three mastered cards into one harder question. A master (Phase 23) is the standing, visual home of a concept, and its opt-in relation cards cover how the parts connect. Relation cards are ordinary cards, so they get the run counter and show in the lists.
+- Skill text changes are seeded only into an empty database (`adr/0006-skills-in-postgres-served-over-mcp.md`): the owner's live default skill must be updated by hand at `/skills/edit` or with `update_skill_file` (scope `default`). Acceptance for each skill change: `get_skill` returns the new step.
+- **How this fits with masters:** fusing is the quick, ad-hoc way to turn two or three mastered cards into one harder question. A master (Phase 23) is the standing, visual home of a concept, and its opt-in relation cards cover how the parts connect. Relation cards are ordinary cards for the run counter and may show in Stuck; they are never fusion sources.
 
 ### 7.9 Human, AI and Ask AI for each part (parity)
 
 | Part | Human UI | MCP | Ask AI |
 |---|---|---|---|
-| Run counter and lists | deck page counts, targeted review page | `list_targeted_review`, `run` in `get_card` | none needed |
+| Run counter and lists | deck page counts, targeted review page | `list_targeted_review`, `run` in `get_card_details` | none needed |
 | Stuck card | three boxes, editor, delete | `edit_card` (`deeper`, content), delete tools | `card.rewrite_stuck` |
 | Fused question | write on the page | `draft_fusions`, `fuse_cards` | `fusion.draft` |
 | Approve a draft | "Drafts to approve" | not allowed (a person approves) | none |
@@ -175,14 +182,14 @@ Rule: no feature is done until the human UI and the MCP columns both exist, and 
 | `src/logic/scheduling/run.ts` (new) | pure run rule, tests |
 | `src/logic/card/updateCardModel.ts` | run update inside the existing transaction |
 | `src/server/mcpWrite.ts`, `mcpStudy.ts` | run update on grade and submit; catch-up clamps |
-| `src/logic/note/updateNoteContent.ts`, `src/server/mcpNotes.ts` | reset run on content save |
+| `src/logic/note/updateNoteContent.ts` (skips master notes, `resetRun` option), `src/server/mcpWrite.ts` (`edit_card`, `gradeCard`), `src/server/mcpManage.ts` (`restore_card_version`, the `set_card_schedule` reset), `src/logic/card/cardControls.ts` (`resetCard`) | reset, update or clear `run` as listed in 7.3 and 7.1 |
 | `src/logic/note/note.ts` | `fusedFrom?`, `fusionDraft?`, `deeper?` on the note types |
 | presets, `presetForm.ts`, `effectiveOptions.ts`, `mcpManage.ts update_preset` | `upgradeAfter`, `stuckAfter` + InfoTips |
 | `src/logic/learn.ts`, `useTodayActivity`, `CardScheduler.ts` | cross-deck total cap for catch-up |
 | settings (`SettingsValues`, `defaultSettings`) | `#cardFilter`, `#cardBudget`, `#catchUp` |
 | new page `/#/targeted-review`, deck page, home page, tour entry | lists, deeper, fuse, drafts, budget warning |
 | `src/server/mcp*.ts` | `list_targeted_review`, `draft_fusions`, `fuse_cards`, `set_catch_up`, error codes |
-| `src/server/skillSeedLearning.ts` | filter gate, fusion and targeted-review steps; then update the live skill |
+| `src/server/skillSeedLearning.ts` (`skola-card-architect`: the filter gate) and `src/server/skillSeed.ts` (`skola`: the targeted-review and fusion steps) | then update the live skills |
 | docs | SPEC row, HANDOFF, ADR 0017, `docs/features.md` |
 
 No server migration and no new table.

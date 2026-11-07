@@ -5,7 +5,7 @@
 
 - **Author:** Antigravity Engineering (synthesized from 4-agent deep-recon run)
 - **Date:** 2026-11-07
-- **Supersedes:** `docs/spec-mcp-parity-flash.md` (Phase 16 overview); this document is the authoritative implementation spec
+- **Supersedes:** `docs/spec-mcp-parity-flash.md` (Phase 16 overview). **Superseded in turn (2026-11-07) for Phases 16 to 20 by `docs/spec-phase-16.md` and `docs/spec-phases-17-20.md`; this document is analysis and reference, not a build spec.**
 - **Tracking:** Phases 16 to 20 in `docs/SPEC.md` (21 dropped; Phases 22 to 24 are the owner's own designs, see `docs/README.md`)
 
 ---
@@ -967,7 +967,7 @@ Add these phases to `docs/SPEC.md`:
 
 ## 10b. ADR References
 
-**ADR 0016 is now taken** (`adr/0016-master-card-lens-over-cards.md`), so the placeholders below shift up by one when they are written. ADR numbers below (0016 to 0035) are **proposed placeholders**, not accepted decisions. The repo's ADRs stop at 0015 (and 0006 and 0007 are each used twice). Number them only when each is written and accepted with `docs/adr/template.md`.
+**ADRs 0016, 0017 and 0018 are taken** (`adr/0016-master-card-lens-over-cards.md`, `adr/0017-run-counter-and-catch-up.md`, `adr/0018-mcp-daily-limits-and-time-zone.md`), so the placeholders below are renumbered from 0019 when they are written, and several (archive, `structuredContent` vocabulary, reminders, panel bridge) are dropped by `spec-phase-16.md`. ADR numbers below (0016 to 0035) are **proposed placeholders**, not accepted decisions. The repo's ADRs stop at 0015 (and 0006 and 0007 are each used twice). Number them only when each is written and accepted with `docs/adr/template.md`.
 
 - **ADR 0016:** `Parent::Child` path syntax — prefer `::` separator over `/` to avoid ambiguity with deck names containing slashes. Auto-create missing ancestors silently (no error, only report what was created).
 - **ADR 0017:** Card history retention — extend to 90 days / 20 versions to match Flash parity. Storage cost is negligible (text only, no images in history).

@@ -43,7 +43,7 @@ Can a master card (a compact cheat-sheet of linked cards) be shown as a diagram,
 | Gemini | none confirmed | Conflicting reports; treat as copy only |
 | Microsoft Copilot, Mistral Le Chat | none found | Open the bare site; copy only |
 
-**Design:** always copy first; use `claude://` for Claude desktop; use `?q=` only for ChatGPT, Perplexity, Grok and only when the encoded link is about 2,000 characters or less; everything else opens the bare site or copies only. The planned prompt (action plus ids and names, no card text) is short enough for all of them. Because these formats are unofficial, targets are a user-editable synced list and the app must say "copied, paste it in" when it cannot prefill.
+**Design:** always copy first; use `claude://` for Claude desktop; use `?q=` only for ChatGPT, Perplexity, Grok and only when the encoded link is about 2,000 characters or less; everything else opens the bare site or copies only. The planned prompt (action plus ids only, no names or card text) is short enough for all of them. Because these formats are unofficial, targets are a user-editable synced list and the app must say "copied, paste it in" when it cannot prefill.
 
 ## 4. Diagram rendering options
 

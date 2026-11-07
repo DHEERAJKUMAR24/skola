@@ -13,7 +13,7 @@ Every feature that needs an AI must therefore have **three doors**: the human UI
 ## 2. Goals
 
 - One pure prompt builder, one button, one list of assistants, used everywhere.
-- Prompts carry only the action and ids and names: no card text, no secrets, short enough for a link.
+- Prompts carry only the action and ids: no names, no card text, no secrets, short enough for a link.
 - Copy first, always; open the assistant only if a link format is known and the prompt fits.
 - Works signed out of nothing: the app does not need to know which assistant, and does not call any AI endpoint.
 
@@ -62,12 +62,12 @@ Pure builder `src/logic/ai/prompts.ts`: `buildPrompt(action, ctx, origin)` retur
 Use the Skola MCP tools (not connected? see <origin>/skills).
 First read the skill "<skill name>" with get_skill and follow it.
 Task: <one sentence for this action>.
-Target: master "Cell signalling" (id m_123) in deck "Physiology" (id d_9).
+Target: master id m_123 in deck id d_9.
 Before you write anything, show me what you plan to write and wait for my yes.
 ```
 
-- Only ids and names. The assistant fetches the rest over MCP.
-- **Approval is per action, not global.** The last prompt line asks the assistant to show its plan and wait for a yes in the chat. Only `fusion.draft` also saves its result as pending drafts that the learner approves in the app (Phase 22). Every other action writes directly after that yes, so the server cannot prove a person approved it; edits to notes and masters can be undone from the 7-day note history.
+- **Ids only: no names, no card text.** Names can be personal and links can be logged or cached, so a prompt carries the kind and id of what it acts on (master m_123, deck d_9); the assistant reads names and contents over MCP. The copied text is the same as the link text.
+- **Approval is per action, not global.** The last prompt line asks the assistant to show its plan and wait for a yes in the chat. Only `fusion.draft` also saves its result as pending drafts that the learner approves in the app (Phase 22). Every other action writes directly after that yes, so the server cannot prove a person approved it; edits to notes and masters can be undone from the note history (7 days today, 90 days after Phase 16.2).
 - Each action names the tool or skill step it expects, so the prompt and the skill cannot drift: the builder reads the action list from one table in `src/logic/ai/actions.ts`, and a test checks each action's skill name and tools exist in `src/server/skillSeed*.ts` and `TOOLS`.
 - Length: the encoded prompt must fit the target's `maxChars`; the builder shortens by dropping optional lines, never by cutting ids.
 
@@ -76,7 +76,7 @@ Before you write anything, show me what you plan to write and wait for my yes.
 | Action | Used on | Skill and tools the prompt names | Result in the app |
 |---|---|---|---|
 | `fusion.draft` | targeted review page (Phase 22) | `skola` fusion step; `list_targeted_review`, `draft_fusions` | "Drafts to approve" list |
-| `card.rewrite_stuck` | a stuck card (Phase 22) | `skola-card-architect`; `get_card`, `edit_card` | the card is edited; run resets on save |
+| `card.rewrite_stuck` | a stuck card (Phase 22) | `skola-card-architect`; `get_card_details`, `edit_card` | the card is edited; run resets on save |
 | `master.draft_diagram` | master builder (Phase 23) | `skola` diagram step; `get_master_card`, `update_master_card` op `set_edges` | arrows appear in the builder for the learner to review |
 | `master.fill_gaps` | Gaps panel of a master | `skola-quality-auditor`; `master_coverage`, then `update_master_card` | entries or cards added only after approval |
 | `master.build_from_cards` | master builder | `skola-card-architect`; `create_master_card from_deck` | a new master |
@@ -89,7 +89,7 @@ More actions are one row in the table, plus one skill step.
 
 ### 6.4 Assistants list
 
-Synced setting `#aiTargets`: `{ id, label, urlTemplate?, maxChars?, tested?: boolean }[]`, `{prompt}` inside the template, URL-encoded by the app. Defaults (research, 2026-11-07):
+Synced setting `#aiTargets`: `{ id, label, urlTemplate?, maxChars? }[]`, `{prompt}` inside the template, URL-encoded by the app. Defaults (research, 2026-11-07):
 
 | Label | Template | Notes |
 |---|---|---|
@@ -100,7 +100,7 @@ Synced setting `#aiTargets`: `{ id, label, urlTemplate?, maxChars?, tested?: boo
 | Grok | `https://grok.com/?q={prompt}` | community-reported, untested |
 | Gemini, Copilot, Mistral | bare site URL, no `{prompt}` | copy only |
 
-The user can edit, add, reorder or delete targets in Settings, AI assistants tab (which already exists for instructions). A "Test" button opens a harmless test prompt so the user learns whether the link format works for them; a pass sets `tested`.
+The user can edit, add, reorder or delete targets in Settings, AI assistants tab (which already exists for instructions). A "Test" button opens a harmless test prompt so the user learns whether the link format works for them; a pass is stored per device as `localStorage["aiTargetTested.<id>"]` (it is not part of the synced setting).
 
 ### 6.5 Flow
 
@@ -126,12 +126,13 @@ Rule for every future AI feature: it is not done until all three columns exist.
 ### 6.7 Fit with the app (checked against the code)
 
 - **Settings:** the synced `settings` table is a set of keyed rows (key path `key`). Nothing whitelists setting names on the server (`src/server/sync.ts` whitelists tables only), so `#aiTargets` needs no schema or server change. It does need an entry in `SettingsValues` and `defaultSettings` (`src/logic/settings/`), which is a closed interface that `useSetting` is typed against.
-- The assistants editor goes on the existing Settings, AI assistants tab (`src/app/settings/`), next to the instructions editor.
-- **Names stay in sync by a test, not by sharing code.** Tool names and skill names are string literals inside the `Tool` objects (`src/server/mcp*.ts`) and `SEED_SKILLS` (`skillSeed.ts`); there is no shared constants file, and importing those server files into `src/logic/ai/` would drag server-only code into the client bundle. So `src/logic/ai/actions.ts` holds its own literals, and a `// @vitest-environment node` test imports `TOOLS` and `SEED_SKILLS` and fails when an action names a tool or skill that does not exist. A "skill step" cannot be checked by name, so each action carries a short marker phrase that the test looks for in the skill text.
-- **Skill delivery:** skill seed text only reaches an empty database (ADR 0006). The owner's live default skill is changed by hand at `/skills/edit` or with `update_skill_file` (scope `default`). Acceptance for every skill step an action names: `get_skill` returns the marker phrase.
+- The assistants editor goes on the existing Settings, AI assistants tab (`src/app/settings/`), next to the instructions editor. **`tested` is per device** (kept in `localStorage` keyed by target id, not in the synced setting): a `claude://` link that works on a desktop does not work on a phone, so a pass on one device must not mark it tested on another.
+- **Popover API:** the Ask AI menu is also opened from inside modals (Gaps panel, gap hunt), so it uses the Popover API (top layer), as AGENTS.md requires; `z-index` loses to `<dialog>`.
+- **Names stay in sync by a test, not by sharing code.** Tool and skill names are string literals inside the `Tool` objects (`src/server/mcp*.ts`) and `SEED_SKILLS` (`skillSeed.ts`); there is no shared constants file, and importing those server files into `src/logic/ai/` would drag server-only code into the client bundle. So `src/logic/ai/actions.ts` holds its own literals, and a `// @vitest-environment node` test imports `TOOLS` (an array: names come from `TOOLS.map(t => t.name)`) and `SEED_SKILLS` (which includes `LEARNING_SKILLS`) and fails when an action names a tool or skill that does not exist. **Ops are not tools:** `set_edges`, `set_relation_cards` and the like are ops described inside the `update_master_card` description, so for those the test checks that description text. A "skill step" cannot be checked by name, so each action carries a short marker phrase that the test looks for in the skill text. **Rows are added only when their tools exist:** `list_targeted_review` and `draft_fusions` belong to Phase 22, so the `fusion.draft` action is added with Phase 22, not before.
+- **Skill delivery:** skill seed text only reaches an empty database (`adr/0006-skills-in-postgres-served-over-mcp.md`). The owner's live default skill is changed by hand at `/skills/edit` or with `update_skill_file` (scope `default`). Acceptance for every skill step an action names: `get_skill` returns the marker phrase.
 - Clipboard: `navigator.clipboard.writeText` needs a user gesture and a secure origin; both hold for a click in the PWA. The fallback dialog covers a blocked clipboard (a dialog with the prompt selected; acceptance: it appears when the write rejects).
 - Opening links: `window.open(url, "_blank", "noopener")`. Custom schemes such as `claude://` may do nothing without the desktop app; the toast says so and copy still worked.
-- **Shortening to fit a link (`maxChars`):** the builder drops optional lines in this order until the encoded link fits: the concept line, the deck name, the "not connected? see" hint. Names are cut to 60 characters. Ids and the task sentence are never cut. If it still does not fit, the link is not opened (copy only, with the toast). Acceptance: a test with a long master name.
+- **Shortening to fit a link (`maxChars`):** the builder drops optional lines in this order until the encoded link fits: the deck id line, then the "not connected? see" hint. The target id and the task sentence are never cut. If it still does not fit, the link is not opened (copy only, with the toast). Acceptance: a test with a long task text.
 - i18n: prompts are English on purpose (assistants and the MCP tools are English); the button, toasts and settings labels go through `t()`.
 - **InfoTips and tours:** the Ask AI button, the assistants list, and each Test button get an `InfoTip`; the assistants editor is part of the existing settings tour step.
 
@@ -144,7 +145,7 @@ Rule for every future AI feature: it is not done until all three columns exist.
 | `src/components/AskAi/` (new) | button, menu, toast, clipboard fallback dialog |
 | `src/logic/settings/` | `#aiTargets` in `SettingsValues` and `defaultSettings`, defaults in code |
 | `src/app/settings/` (AI assistants tab) | the editor and a Test button |
-| `src/server/skillSeed*.ts` | the steps the prompts name; then update the live skill |
+| `src/server/skillSeed.ts` (`skola`) and `skillSeedLearning.ts` (`skola-*`) | the steps the prompts name; then update the live skills |
 | tours, InfoTips, `docs/features.md`, HANDOFF, SPEC row | updated with the build |
 
 No server migration, no Dexie version, no new API route.
