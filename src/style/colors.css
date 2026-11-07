@@ -84,7 +84,8 @@
   --color-lime-950: #1a2e05;
 }
 
-:root,
+/* Light theme: explicit attribute OR system light (before JS sets data-theme) */
+:root:not([data-theme="dark"]),
 [data-theme="light"] {
   --theme-neutral-50: var(--color-neutral-50);
   --theme-neutral-100: var(--color-neutral-100);
@@ -169,6 +170,95 @@
   --theme-lime-800: var(--color-lime-800);
   --theme-lime-900: var(--color-lime-900);
   --theme-lime-950: var(--color-lime-950);
+}
+
+/* Dark theme: explicit attribute OR system dark (before JS sets data-theme) */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --theme-neutral-50: var(--color-neutral-950);
+    --theme-neutral-100: var(--color-neutral-900);
+    --theme-neutral-200: var(--color-neutral-800);
+    --theme-neutral-300: var(--color-neutral-700);
+    --theme-neutral-400: var(--color-neutral-600);
+    --theme-neutral-500: var(--color-neutral-500);
+    --theme-neutral-600: var(--color-neutral-400);
+    --theme-neutral-700: var(--color-neutral-300);
+    --theme-neutral-800: var(--color-neutral-200);
+    --theme-neutral-900: var(--color-neutral-100);
+    --theme-neutral-950: var(--color-neutral-50);
+
+    --theme-primary-50: var(--color-primary-950);
+    --theme-primary-100: var(--color-primary-900);
+    --theme-primary-200: var(--color-primary-800);
+    --theme-primary-300: var(--color-primary-700);
+    --theme-primary-400: var(--color-primary-600);
+    --theme-primary-500: var(--color-primary-500);
+    --theme-primary-600: var(--color-primary-400);
+    --theme-primary-700: var(--color-primary-300);
+    --theme-primary-800: var(--color-primary-200);
+    --theme-primary-900: var(--color-primary-100);
+    --theme-primary-950: var(--color-primary-50);
+
+    --theme-orange-50: var(--color-orange-950);
+    --theme-orange-100: var(--color-orange-900);
+    --theme-orange-200: var(--color-orange-800);
+    --theme-orange-300: var(--color-orange-700);
+    --theme-orange-400: var(--color-orange-600);
+    --theme-orange-500: var(--color-orange-500);
+    --theme-orange-600: var(--color-orange-400);
+    --theme-orange-700: var(--color-orange-300);
+    --theme-orange-800: var(--color-orange-200);
+    --theme-orange-900: var(--color-orange-100);
+    --theme-orange-950: var(--color-orange-50);
+
+    --theme-red-50: var(--color-red-950);
+    --theme-red-100: var(--color-red-900);
+    --theme-red-200: var(--color-red-800);
+    --theme-red-300: var(--color-red-700);
+    --theme-red-400: var(--color-red-600);
+    --theme-red-500: var(--color-red-500);
+    --theme-red-600: var(--color-red-400);
+    --theme-red-700: var(--color-red-300);
+    --theme-red-800: var(--color-red-200);
+    --theme-red-900: var(--color-red-100);
+    --theme-red-950: var(--color-red-50);
+
+    --theme-fuchsia-50: var(--color-fuchsia-950);
+    --theme-fuchsia-100: var(--color-fuchsia-900);
+    --theme-fuchsia-200: var(--color-fuchsia-800);
+    --theme-fuchsia-300: var(--color-fuchsia-700);
+    --theme-fuchsia-400: var(--color-fuchsia-600);
+    --theme-fuchsia-500: var(--color-fuchsia-500);
+    --theme-fuchsia-600: var(--color-fuchsia-400);
+    --theme-fuchsia-700: var(--color-fuchsia-300);
+    --theme-fuchsia-800: var(--color-fuchsia-200);
+    --theme-fuchsia-900: var(--color-fuchsia-100);
+    --theme-fuchsia-950: var(--colors-fuchsia-50);
+
+    --theme-sky-50: var(--color-sky-950);
+    --theme-sky-100: var(--color-sky-900);
+    --theme-sky-200: var(--color-sky-800);
+    --theme-sky-300: var(--color-sky-700);
+    --theme-sky-400: var(--color-sky-600);
+    --theme-sky-500: var(--color-sky-500);
+    --theme-sky-600: var(--color-sky-400);
+    --theme-sky-700: var(--color-sky-300);
+    --theme-sky-800: var(--color-sky-200);
+    --theme-sky-900: var(--color-sky-100);
+    --theme-sky-950: var(--color-sky-50);
+
+    --theme-lime-50: var(--color-lime-950);
+    --theme-lime-100: var(--color-lime-900);
+    --theme-lime-200: var(--color-lime-800);
+    --theme-lime-300: var(--color-lime-700);
+    --theme-lime-400: var(--color-lime-600);
+    --theme-lime-500: var(--color-lime-500);
+    --theme-lime-600: var(--color-lime-400);
+    --theme-lime-700: var(--color-lime-300);
+    --theme-lime-800: var(--color-lime-200);
+    --theme-lime-900: var(--color-lime-100);
+    --theme-lime-950: var(--color-lime-50);
+  }
 }
 
 [data-theme="dark"] {

@@ -14,26 +14,15 @@ function applyThemeFromPreference(preference: "light" | "dark" | "auto") {
   }
 }
 
-// Apply theme immediately on module load to prevent flash
-const storedPreference = localStorage.getItem("mantine-color-scheme-value");
-if (storedPreference) {
-  try {
-    const parsed = JSON.parse(storedPreference);
-    if (parsed && typeof parsed === "string") {
-      applyThemeFromPreference(parsed as "light" | "dark" | "auto");
-    }
-  } catch {
-    applyThemeFromPreference("auto");
-  }
-} else {
-  applyThemeFromPreference("auto");
-}
-
 export function useTheme() {
   const [colorSchemePreference] = useSetting("#colorSchemePreference");
 
   useEffect(() => {
     applyThemeFromPreference(colorSchemePreference);
+
+    try {
+      localStorage.setItem("skola-color-scheme", colorSchemePreference);
+    } catch {}
 
     if (colorSchemePreference === "auto") {
       const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");

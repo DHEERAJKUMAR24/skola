@@ -1,6 +1,6 @@
 # Handoff
 
-Single source of truth for "where are we". Rewrite the sections below at the end of every session. Last updated: 2026-11-06.
+Single source of truth for "where are we". Rewrite the sections below at the end of every session. Last updated: 2026-11-07 (session 2).
 
 ## Repo state
 - Repo: `DHEERAJKUMAR24/skola`. v0.6.0 = commit `f382572`, tag `v0.6.0`, pushed to `next-migration` and `main`. Working tree clean when written.
@@ -8,6 +8,78 @@ Single source of truth for "where are we". Rewrite the sections below at the end
 - Health at last run: `pnpm test` 315 passed, 1 skipped; `pnpm lint:type` clean; `pnpm build` passes; Biome 18 warnings.
 - After v0.6.0: master card feature, history and objectives UI, find_similar_cards, reverse cards over MCP are committed on `next-migration` ONLY (not on `main`, not deployed). Last full run: tsc clean, 518 tests passed, Biome 18 warnings, `pnpm build` passes. See "Remaining after the 2026-11-06 wrap-up".
 - Deploy: Vercel production build of `main` was NOT confirmed (the `vercel ls --scope dj-1b1f` check was interrupted). Check it first.
+
+## Session 2026-11-07 (Deep Flash vs Skola++ comparison + gap-closing spec)
+
+- Ran 4 parallel deep-recon agents against both repos simultaneously:
+  - Flash MCP tools (all 26): schemas, error codes, grading rubric, panel protocol, speech block format
+  - Flash architecture: SQLite schema (23+ tables), WebAuthn + OAuth 2.1 PKCE S256, Anki .apkg import/export, voice clips, content-addressed SHA256 media
+  - Skola MCP tools (all 56): full schemas, session logic, idempotency, grading behavior, next_step logic
+  - Skola UI/Schema: 11 UI routes, Dexie v22–v29, Postgres 15 tables, 7 note types, all 5 skill seeds verbatim
+- Installed BMAD-METHOD skills: `bmad`, `bmad-deep-recon` (REA), `bmad-agent-analyst`, `bmad-agent-pm`, `bmad-agent-architect` via `npx skills@latest add`
+- Read Flash's Rust source directly: `study_tools.rs`, `card_tools.rs`, `deck_tools.rs`, `args.rs`, `out.rs`, `speech.rs`, `MCP.md` — not just the hosted MCP endpoint
+- Created `docs/spec-comparison-flash-deep.md` — the authoritative gap-closing spec covering:
+  - Full tool-by-tool comparison (all 26 Flash vs all 56 Skola++ tools, with parity status)
+  - AI skills comparison (Flash: 1 static prompt; Skola++: 5 dynamic versioned skills)
+  - Architecture gaps: auth (WebAuthn), storage (content-addressed SHA256), card history (7d→90d), Anki import/export
+  - **Section 9 (new, from Rust source):** AI-first UX patterns missing from Skola++:
+    - `grading_mode` per session (silent/announce/self_grade) — user-configurable AI behavior
+    - `note` field on 5 tool responses: dynamic queue guidance (`queue_note` 4-state), OFFER_FIRST_CARDS, ONLY_SESSIONS_COUNT, panel-conditional terse create_cards note, end_session site CTA
+    - `comes_back_in_ms: [i64; 4]` on `show_answer` — preview all 4 rating intervals before grading
+    - Panel prefetch (`next_card` + `preload` URLs) for optimistic UI
+    - `panel_state` ("card"/"held"/"caught_up"/"empty") driving different panel views
+    - Speech fields marked REQUIRED in JSON Schema (forces AI to generate speech blocks)
+    - HTML fields (`front_html`/`back_html`) with sanitization
+    - Goal data in `list_decks` output per deck
+    - All study + card tool descriptions rewritten as conversational action guides
+  - Phase 16.1–19 implementation plans with file paths, schema changes, test requirements
+  - 6 new ADRs needed (0016–0021)
+  - Skola++ superiority checklist showing 63+ tools, 8 card types, K/S mastery framework vs Flash's 26 tools, 2 card types
+- Updated `docs/SPEC.md`: Phase 16 split into 16.1/16.2/16.3 + added Phases 17/18/19 (all SPEC DONE)
+- Also completed (earlier this session): dark mode FOUC fix (blocking inline script in layout.tsx + CSS @media fallback + useTheme.ts localStorage write); Gmail SMTP configured for forgot-password emails (`orbitproject270@gmail.com`); Flash ref repo cloned at `D:/Workspace/z-personalWorkspace/flash-ref`
+
+**Session 3 final batch — Sections 11.15–11.23 added (all high-priority files now read):**
+- Read: `jobs.rs`, `repo/reviews.rs`, `api/admin.rs`, `api/cards.rs`, `api/decks.rs`, `api/import.rs`, `api/media.rs`, `flows/account.rs`, `flows/enroll.rs`, `flows/login.rs`, `flows/reset.rs`, `auth.rs`, `repo/decks.rs`, `import/proto.rs`, `import/template.rs`, `flash-store/tests/export_tests.rs`, `mcp_tests.rs`, `revision_tests.rs`, `store_tests.rs`, `import_vectors_tests.rs`
+- **New findings from final batch:**
+  - **Background jobs** (11.15): 5s poll, 5-min lease, `[60s, 5m, 30m, 2h, 12h]` backoff, batch=16; FSRS optimizer NOT in core (in extension); all handlers must be idempotent
+  - **Stats queries** (11.16): heatmap is 15-min UTC buckets → app converts to local days; streak NOT in reviews.rs; `reviews_since()` is unbounded (must paginate); required indexes documented
+  - **REST gaps** (11.17): `POST /decks/{id}/move`, `PUT /decks/{id}/limits`, `GET /editor/meta`, `NoteBody.langs`, rich HTML card editor — all REST-only; no MCP equivalent
+  - **Media** (11.18): HTTP 206 for audio/video seek; SHA-256 hex; magic byte validation order; two soft caps (bytes + object count); multipart field exactly `"file"`; dedup by hash
+  - **Auth details** (11.19): 30-day non-sliding sessions; `__Host-` cookie; password reset 1h TTL / 1-min cooldown / 5/day cap; uniform 200 on reset request; `via_link` session restriction; passkey ceremony TTL 5 min
+  - **Import correction** (11.20): `colors` is `"keep" | "clean"` string enum, NOT boolean as previously specced
+  - **Data model invariants** (11.21): MAX_DECKS_PER_USER=500; path creation atomic; can't create under archived parent; `%` and `_` literal in names; revisions hard-capped 20/90days; API token grace window; language learning vs choosing
+  - **Anki template rendering** (11.22): `{{FrontSide}}` renders empty; `{{hint:}}` → `<details>`; cloze processed before template; known filter set
+  - **10 lower-priority files** remain (see Section 11.23 — not blockers for Phases 16–21)
+  - Added Phase 21 (background jobs), ADRs 0030–0035
+
+**Session 3 — full cavecrew sweep; additional findings added as Sections 11.1–11.15:**
+- Installed `cavecrew` skill; ran 7 parallel Explore agents against all unread Flash Rust source files
+- **New files read:** `mcp.rs`, `errors.rs`, `card.rs`, `deck_path.rs`, `deck_tree.rs`, `goal.rs`, `speech.rs`, `bounds.rs`, `config.rs`, `export_flow.rs`, `api/today.rs`, `api/stats.rs`, `api/tags.rs`, `api/study.rs`, `api/settings.rs`, `queue.rs` (full), `card_tools.rs` (full), `flash-scan/` (all files), `flash-store/src/export/apkg.rs`, `flash-store/src/import/apkg.rs`, `flash-store/src/import/csv_file.rs`, `flash-store/src/migrations.rs`
+- **Key new gaps discovered:**
+  - Flash also does **CSV import** (completely undocumented) — `front`, `back`, optional `tags`, optional `deck`
+  - **`blank` speech cue** was missing from spec (had only equation/look); Cantonese → `look` auto-redirect
+  - **Goal pacing formula** documented exactly (window = 12% of days_left clamped 3–14; recall target = retention + 5% clamped 95–99%)
+  - **Queue ordering** strictly: Learning → Review → New; 20-min learn-ahead window; paced decks isolated from global pool
+  - **Error codes** are machine-readable `code` strings in `data` field; vocabulary documented
+  - **MCP sessions DB-backed** (mcp_sessions table, persist across restarts); confirmed `mcp_confirmations` max 32 pending, 10-min TTL, auto-invalidated by DB triggers on card/deck delete
+  - **`list_cards` enhancements**: cursor pagination (`before_card_id`), byte-bounded at 64 KB, includes `source` object per card, authenticated media URLs
+  - **Revlog NOT exported** — all scheduling reset to 0; revlog IS read on import for history replay
+  - **Review log is immutable** — DB triggers prevent UPDATE/DELETE
+  - **`answer_ms`** on `review_log` confirmed (V035 migration); `source IN ('mcp','web','import','mobile')` on review_log
+  - **Stats dashboard** (`/stats` REST) — streak, heatmap, retention %, forecast; no MCP equivalent; specced as Phase 20
+  - **`dropped_slots`** on cloze notes — deleted slot indices tracked to prevent ordinal renumbering
+  - **`speech_by IN ('assistant','labeler')`** on notes — tracks who generated speech
+  - **`front_lang`/`back_lang`** on notes — BCP 47 language tags for TTS
+  - **15 unread files remain** (documented in Section 11.15) — `jobs.rs`, `repo/reviews.rs`, admin API etc.
+  - Added Phase 20 (stats dashboard), ADRs 0022–0029, `list_tags` MCP tool, CSV import to Phase 17
+
+**Session 2 — corrections applied to `spec-comparison-flash-deep.md` after reading all Rust source:**
+- FSRS version corrected: Flash uses `fsrs = "6.6.1"` (FSRS v6, `FSRS6_DEFAULT_DECAY`) — both systems are on v6; the comparison axis is policy + UX not algorithm version
+- `grading_mode` default corrected: `GradingMode::Silent` is `#[default]` in `settings.rs` — Skola++ should default to `"silent"` not `"announce"`
+- `panel_archive` corrected: archives a **card** (calls `set_card_archived`), NOT a deck — it's a "quiet retire this card from study" action from within a session; undo restores card to front of queue
+- Anki import: added two-step preview→commit flow + `progress: bool` option for replaying Anki `revlog` review history into FSRS (preserves scheduling state across migration)
+- `panel_grade`: documented `answer_ms?: number` response-time telemetry field
+- Added MediaLinks signed-URL spec to Phase 16.3: HMAC-SHA256 24-hour TTL, DB-stored key, `GET /api/mcp-media/[id]/s` proxy route
 
 ## Session 2026-11-06 (Flash MCP parity spec & agent guidelines)
 - Connected and authenticated Flash MCP (`https://flashmemorize.com/mcp`).
@@ -68,7 +140,7 @@ Close these in order. Everything above marked "built" has tests and a clean buil
 2. **Browser walk-through (signed in):** History modal (version list, diff, restore, "sync then restore" ordering), `/objectives` page (create, assess, delete with two-step), skill editor at `/#/settings/skills`. Signed-out state confirmed: `/objectives` shows "needs sign-in and a connection"; `/#/settings/skills` shows "Sign in to write your own skills"; history modal shows "needs sign-in and a connection" (confirmed by `NoteHistoryModal.test.tsx`). Full signed-in test needs the owner to log in.
 3. **Real MCP client** (Claude, ChatGPT) against a deployed server: master tools (`create_master_card` dry run, `update_master_card` ops, `master_coverage` fix_ops, `delete_master_card` confirm), `find_similar_cards`, reverse cards, study sessions, history, evidence, instructions. Large-deck performance of master tools is untested (each call loads the user's decks, cards and notes).
 4. **Deploy (owner decision, not done):** `next-migration` was pushed without deploying; `main` still holds v0.6.0 (`f382572`). Confirm the v0.6.0 Vercel build is Ready (`vercel ls --scope dj-1b1f`), then merge to `main` for this batch. No migration is needed for this batch. After deploy re-paste the default `skola` skill and the four learning skills at `/#/settings/skills` (the seed never overwrites rows; master tools, find_similar_cards, reverse cards and the `get_objective_overview` rename are only in the new text). Old text still calls `get_master_card` for objectives, which now returns `[renamed_tool]`.
-5. **Check ADR 0015** rows against the original Flash comparison document (the agent could not find it in the repo).
+5. ✅ **Flash reference repo** cloned to `D:/Workspace/z-personalWorkspace/flash-ref` (2026-11-07) and added to Orca as `flash-ref`. `docs/spec-mcp-parity-flash.md` confirmed against the live Flash MCP. ADR 0015 rows verified — no discrepancies. Phase 16 spec status updated to CONFIRMED.
 6. **Tune `find_similar_cards`** default threshold (0.72) on a real collection.
 7. **Review formatting churn:** agents ran `biome check --write` over `src`, which reformatted files outside their own changes; skim `git diff` of files that changed only in whitespace.
 8. **Small gaps:** card picker excludes master notes (two masters cannot be linked from the graph picker); graph rebuilds on any notes or cards change and caps at 500 nodes; `find_leeches` has no lapse-count list in the app (only the `leech` tag filter); German, Portuguese and Swedish strings missing for all new UI (fall back to English); no app UI to view `get_objective_overview`; coverage counts only a master's own deck (sub-decks have their own masters, by design).

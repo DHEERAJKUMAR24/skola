@@ -1,6 +1,6 @@
 # Skola MCP Parity & Enhancement Specification (vs Flash MCP)
 
-- **Status:** APPROVED / READY FOR IMPLEMENTATION
+- **Status:** SPEC CONFIRMED — reference repo cloned at `D:/Workspace/z-personalWorkspace/flash-ref` (2026-11-07); ready for Phase 16 implementation
 - **Author:** Antigravity / Engineering
 - **Date:** 2026-11-06
 - **Tracking:** Phase 16 in `app/docs/SPEC.md`, live status in `app/docs/HANDOFF.md`

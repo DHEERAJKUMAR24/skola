@@ -25,8 +25,7 @@ const RING_PAD = 4;
 function formatSyncedAt(lastSyncedAt: number, now: number): string {
   const diff = now - lastSyncedAt;
   if (diff < 60_000) return "Synced just now";
-  if (diff < 3_600_000)
-    return `Synced ${Math.floor(diff / 60_000)} min ago`;
+  if (diff < 3_600_000) return `Synced ${Math.floor(diff / 60_000)} min ago`;
   return `Synced at ${new Date(lastSyncedAt).toLocaleTimeString([], {
     hour: "2-digit",
     minute: "2-digit",
