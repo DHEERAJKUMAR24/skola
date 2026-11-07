@@ -52,6 +52,7 @@
       "new-subdeck": "Create New Subdeck in {{superDeck}}",
       "submit": "Create"
     },
+    "name-rule": "Invalid deck name: {{reason}}",
     "no-decks-found": "There are no decks here. Click the button above to create one!",
     "notebook": {
       "title": "Notebook"

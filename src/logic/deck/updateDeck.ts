@@ -1,6 +1,7 @@
 import { ColorIdentifier } from "@/lib/ColorIdentifier";
 import { db } from "../db";
 import type { DeckOptions } from "./deck";
+import { validateDeckName } from "./deckPath";
 
 export async function updateDeck(
   id: string,
@@ -9,6 +10,8 @@ export async function updateDeck(
   color?: ColorIdentifier,
   fsrs?: Partial<DeckOptions>
 ): Promise<void> {
+  const nameError = validateDeckName(name);
+  if (nameError) throw Error(nameError);
   const current = await db.decks.get(id);
   await db.decks.update(id, {
     name,

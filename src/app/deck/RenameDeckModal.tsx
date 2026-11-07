@@ -3,6 +3,7 @@ import { Button, Modal, TextInput } from "@/components/ui";
 import { getHotkeyHandler } from "@/lib/hooks/getHotkeyHandler";
 import { useHotkeys } from "@/lib/hooks/useHotkeys";
 import { Deck } from "@/logic/deck/deck";
+import { validateDeckName } from "@/logic/deck/deckPath";
 import { renameDeck } from "@/logic/deck/renameDeck";
 import { t } from "i18next";
 import { useCallback, useEffect, useState } from "react";
@@ -21,15 +22,17 @@ function RenameDeckModal({ deck, opened, setOpened }: RenameDeckModalProps) {
 
   useEffect(() => setNameValue(deck.name), [deck]);
 
+  const ruleError = validateDeckName(nameValue);
+
   const tryRenameDeck = useCallback(() => {
-    if (nameValue !== "") {
+    if (ruleError === null) {
       renameDeck(deck.id, nameValue)
         .then(() => {
           setOpened(false);
         })
         .catch(() => genericFail());
     }
-  }, [deck, nameValue, setOpened]);
+  }, [deck, nameValue, ruleError, setOpened]);
 
   useHotkeys([["mod+Enter", () => tryRenameDeck()]]);
 
@@ -44,6 +47,11 @@ function RenameDeckModal({ deck, opened, setOpened }: RenameDeckModalProps) {
           data-autofocus
           label={t("deck.rename.new-name")}
           value={nameValue}
+          error={
+            nameValue !== "" && ruleError
+              ? t("deck.name-rule", { reason: ruleError })
+              : undefined
+          }
           onChange={(e) => setNameValue(e.currentTarget.value)}
           onKeyDown={getHotkeyHandler([["mod+Enter", () => tryRenameDeck()]])}
         />
@@ -52,7 +60,7 @@ function RenameDeckModal({ deck, opened, setOpened }: RenameDeckModalProps) {
             {t("global.cancel")}
           </Button>
           <Button
-            disabled={nameValue === ""}
+            disabled={ruleError !== null}
             onClick={tryRenameDeck}
             variant="primary"
           >

@@ -4,6 +4,7 @@ import { ColorIdentifier } from "@/lib/ColorIdentifier";
 import { useHotkeys } from "@/lib/hooks/useHotkeys";
 import { db } from "@/logic/db";
 import type { Deck } from "@/logic/deck/deck";
+import { validateDeckName } from "@/logic/deck/deckPath";
 import { type ExamForm, fromExamForm, toExamForm } from "@/logic/deck/examForm";
 import { newDeck } from "@/logic/deck/newDeck";
 import {
@@ -22,7 +23,7 @@ import "./DeckModal.css";
 import DeckStudyFields from "./DeckStudyFields";
 
 const BASE = "deck-modal";
-const NAME_MAX = 60;
+const NAME_MAX = 100;
 
 interface DeckModalProps extends ModalProps {
   mode: "create" | "edit";
@@ -96,11 +97,17 @@ function DeckModal({
 
   const parsed = useMemo(() => fromExamForm(exam), [exam]);
   const examErrors = "errors" in parsed ? parsed.errors : {};
-  const nameError =
-    nameTouched && nameValue.trim() === "" ? "Give the deck a name" : undefined;
+  const ruleError = validateDeckName(nameValue.trim());
+  const nameError = !nameTouched
+    ? undefined
+    : nameValue.trim() === ""
+      ? "Give the deck a name"
+      : ruleError
+        ? t("deck.name-rule", { reason: ruleError })
+        : undefined;
 
   function isInputValid(): boolean {
-    return nameValue.trim() !== "" && "options" in parsed;
+    return ruleError === null && "options" in parsed;
   }
 
   function handleClose() {

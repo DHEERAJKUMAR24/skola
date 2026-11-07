@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from "uuid";
 import { db } from "../db";
 import { Deck } from "./deck";
 import type { DeckOptions } from "./deck";
+import { validateDeckName } from "./deckPath";
 import { FSRS_DEFAULTS } from "./fsrsOptions";
 
 export async function newDeck(
@@ -12,6 +13,8 @@ export async function newDeck(
   color?: ColorIdentifier,
   fsrs: Partial<DeckOptions> = FSRS_DEFAULTS
 ): Promise<string> {
+  const nameError = validateDeckName(name);
+  if (nameError) throw Error(nameError);
   const uuid = uuidv4();
 
   let superDecks: string[] | undefined = undefined;

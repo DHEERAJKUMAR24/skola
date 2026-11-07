@@ -22,3 +22,11 @@ export function decksWithPaths(decks: Deck[]) {
     .map((d) => ({ deck: d, path: deckPath(d, byId) }))
     .sort((a, b) => a.path.localeCompare(b.path));
 }
+
+/** "::" is the deck path separator used by the MCP tools. Pure: shared with the server. */
+export function validateDeckName(name: string): string | null {
+  if (name.includes("::")) return 'A deck name cannot contain "::"';
+  if (name.length < 1 || name.length > 100)
+    return "A deck name must be 1 to 100 characters";
+  return null;
+}
