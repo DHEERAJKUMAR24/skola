@@ -374,197 +374,536 @@
   flex-wrap: wrap;
 }
 
-/* ── Graph view ─────────────────────────────────────────────────── */
+/* ── Graph view — full-page canvas with floating overlays ───────── */
 .master-graph {
-  width: 100%;
-  max-width: 1400px;
-  margin: 0 auto;
+  /* Fill available content height; parent must be flex or grid. */
+  flex: 1;
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-sm);
+  min-height: 0;
+  /* Counteract any page-level padding so the canvas reaches the edges. */
+  margin: calc(-1 * var(--spacing-md, 16px));
 }
 
-.master-graph__bar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--spacing-md);
-  align-items: end;
-}
-
-.master-graph__legend {
-  display: inline-flex;
-  gap: var(--spacing-sm);
-  align-items: center;
-  font-size: var(--font-size-sm);
-}
-
-.master-graph__dot {
-  display: inline-block;
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: #60a5fa;
-}
-
-.master-graph__dot--master {
-  background: #4ade80;
-}
-
-.master-graph__line {
-  display: inline-block;
-  width: 18px;
-  border-top: 1.5px solid rgba(100, 116, 139, 0.6);
-}
-
-.master-graph__line--entry {
-  border-top: 2px solid #7c3aed;
-}
-
-.master-graph__body {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 18rem;
-  gap: var(--spacing-md);
-  align-items: start;
-}
-
-/* Sigma canvas container + visual overlays */
+/* Canvas container — fills the entire graph area */
 .master-graph__canvas-wrap {
   position: relative;
-  aspect-ratio: 1000 / 640;
-  min-height: 300px;
-  border-radius: var(--radius-md, 8px);
+  flex: 1;
+  min-height: 0;
   overflow: hidden;
   background: #0d1117;
 }
 
-/* Sigma mounts its WebGL + label canvases here */
+/* Canvas fills the wrap; ResizeObserver sets exact pixel dimensions. */
 .master-graph__canvas {
+  display: block;
+  cursor: grab;
   width: 100%;
   height: 100%;
 }
 
-/* Dot-grid background pattern + radial vignette, non-interactive */
-.master-graph__overlay {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  /* Dot grid */
-  background-image: radial-gradient(
-    circle,
-    rgba(255, 255, 255, 0.07) 1px,
-    transparent 1px
-  );
-  background-size: 40px 40px;
-  /* Vignette on top of the grid */
-  -webkit-mask-image: radial-gradient(
-    ellipse 100% 100% at 50% 50%,
-    black 40%,
-    transparent 100%
-  );
-  mask-image: radial-gradient(
-    ellipse 100% 100% at 50% 50%,
-    black 40%,
-    transparent 100%
-  );
+.master-graph__canvas:active {
+  cursor: grabbing;
 }
 
-/* Alternative vignette via pseudo-element (keeps grid visible) */
-.master-graph__overlay::after {
+/* ── Floating toolbar — top-left ─────────────────────────────── */
+.mgraph-toolbar {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  z-index: 10;
+}
+
+.mgraph-toolbar__btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: rgba(20, 22, 30, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 7px;
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 17px;
+  cursor: pointer;
+  backdrop-filter: blur(6px);
+  transition: background 0.15s;
+}
+
+.mgraph-toolbar__btn:hover {
+  background: rgba(40, 44, 60, 0.95);
+  color: #fff;
+}
+
+.mgraph-toolbar__btn--active {
+  background: rgba(96, 80, 160, 0.6);
+  border-color: rgba(192, 132, 252, 0.4);
+  color: #e9d5ff;
+}
+
+/* ── Stats badge — top-left below toolbar ────────────────────── */
+.mgraph-stats {
+  position: absolute;
+  bottom: 12px;
+  left: 12px;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.4);
+  pointer-events: none;
+  z-index: 5;
+}
+
+/* ── Floating filter / settings panel — top-right ────────────── */
+.mgraph-panel {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 268px;
+  max-height: calc(100% - 24px);
+  overflow-y: auto;
+  background: #15181f;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  color: rgba(220, 220, 240, 0.9);
+  font-size: 13px;
+  z-index: 20;
+  box-shadow: 0 6px 32px rgba(0, 0, 0, 0.6);
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,0.1) transparent;
+}
+
+.mgraph-panel__section {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.mgraph-panel__section:last-child {
+  border-bottom: none;
+}
+
+/* Section header row — now a <div> so icon buttons can be siblings */
+.mgraph-panel__section-head {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px 2px 0;
+}
+
+.mgraph-panel__section-head:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+/* The collapsible toggle inside the header */
+.mgraph-panel__section-toggle {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 6px 7px 12px;
+  background: none;
+  border: none;
+  color: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  text-align: left;
+}
+
+.mgraph-panel__chevron {
+  font-size: 11px;
+  opacity: 0.7;
+}
+
+.mgraph-panel__section-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 4px 12px 12px;
+}
+
+.mgraph-panel__icon-btn {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.45);
+  cursor: pointer;
+  font-size: 12px;
+  padding: 2px 4px;
+  border-radius: 4px;
+  line-height: 1;
+}
+
+.mgraph-panel__icon-btn:hover {
+  color: rgba(255, 255, 255, 0.85);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* Search input */
+.mgraph-panel__search-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 7px;
+  padding: 5px 10px;
+}
+
+.mgraph-panel__search-icon {
+  font-size: 12px;
+  opacity: 0.6;
+}
+
+.mgraph-panel__search {
+  flex: 1;
+  background: none;
+  border: none;
+  outline: none;
+  color: rgba(220, 220, 240, 0.9);
+  font-size: 13px;
+}
+
+.mgraph-panel__search::placeholder {
+  color: rgba(255, 255, 255, 0.3);
+}
+
+/* Toggle row (label + checkbox) */
+.mgraph-panel__toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: rgba(220, 220, 240, 0.85);
+  cursor: pointer;
+}
+
+/* Deck select */
+.mgraph-panel__select {
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 5px;
+  color: inherit;
+  font-size: 12px;
+  padding: 2px 4px;
+  max-width: 130px;
+}
+
+/* iOS-style checkbox */
+.mgraph-panel__checkbox {
+  width: 32px;
+  height: 18px;
+  appearance: none;
+  background: rgba(255,255,255,0.15);
+  border-radius: 9px;
+  cursor: pointer;
+  position: relative;
+  flex-shrink: 0;
+  transition: background 0.2s;
+}
+
+.mgraph-panel__checkbox:checked {
+  background: #22d3ee;
+}
+
+.mgraph-panel__checkbox::after {
   content: "";
   position: absolute;
-  inset: 0;
-  background: radial-gradient(
-    ellipse at 50% 50%,
-    transparent 40%,
-    rgba(0, 0, 0, 0.6) 100%
-  );
-}
-
-/* Pulsing ring rendered as a positioned div over sigma's canvas */
-.master-graph__ring {
-  position: absolute;
-  transform: translate(-50%, -50%);
-  width: 36px;
-  height: 36px;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
   border-radius: 50%;
-  border: 1.5px solid rgba(255, 255, 255, 0.7);
-  pointer-events: none;
-  animation: graph-pulse 1.8s ease-out infinite;
+  background: white;
+  transition: transform 0.2s;
 }
 
-@keyframes graph-pulse {
-  0% {
-    transform: translate(-50%, -50%) scale(1);
-    opacity: 0;
-  }
-  8% {
-    opacity: 0.65;
-  }
-  100% {
-    transform: translate(-50%, -50%) scale(3.2);
-    opacity: 0;
-  }
+.mgraph-panel__checkbox:checked::after {
+  transform: translateX(14px);
 }
 
-/* Panel */
-.master-graph__panel {
+/* Slider row */
+.mgraph-panel__slider-row {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-sm);
+  gap: 4px;
+  color: rgba(220, 220, 240, 0.85);
+  cursor: pointer;
 }
 
-.master-graph__sel {
+.mgraph-panel__slider-row span {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+}
+
+.mgraph-panel__slider-row input[type="range"] {
+  width: 100%;
+  accent-color: #22d3ee;
+  cursor: pointer;
+}
+
+/* Groups */
+.mgraph-panel__group-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.mgraph-panel__group-query {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 5px;
+  color: rgba(220, 220, 240, 0.9);
+  font-size: 12px;
+  padding: 4px 7px;
+  outline: none;
+}
+
+.mgraph-panel__group-query::placeholder {
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.mgraph-panel__group-color {
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.mgraph-panel__new-group-btn {
+  width: 100%;
+  padding: 6px;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 7px;
+  color: rgba(220, 220, 240, 0.8);
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.mgraph-panel__new-group-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.mgraph-panel__hint {
+  margin: 0;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.35);
+  line-height: 1.6;
+}
+
+.mgraph-panel__hint code {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 3px;
+  padding: 0 3px;
+}
+
+/* Animate button */
+.mgraph-panel__animate-btn {
+  width: 100%;
+  padding: 7px;
+  background: rgba(80, 50, 140, 0.4);
+  border: 1px solid rgba(192, 132, 252, 0.3);
+  border-radius: 7px;
+  color: #e9d5ff;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.mgraph-panel__animate-btn:hover {
+  background: rgba(100, 60, 170, 0.5);
+}
+
+/* ── Node info overlay — bottom-right ────────────────────────── */
+.mgraph-node-info {
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+  width: 240px;
+  max-height: 60vh;
+  overflow-y: auto;
+  background: #15181f;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  color: rgba(220, 220, 240, 0.9);
+  font-size: 12px;
+  z-index: 15;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-xs);
-  padding: var(--spacing-sm);
-  border: 1px solid var(--theme-neutral-200);
-  border-radius: var(--radius-md, 8px);
+  gap: 8px;
+  padding: 10px 12px;
 }
 
-.master-graph__sel-badges,
-.master-graph__sel-actions {
+.mgraph-node-info__head {
   display: flex;
-  gap: var(--spacing-xs);
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.mgraph-node-info__title {
+  flex: 1;
+  font-weight: 600;
+  font-size: 13px;
+  word-break: break-word;
+}
+
+.mgraph-node-info__badges {
+  display: flex;
+  gap: 5px;
   flex-wrap: wrap;
 }
 
-.master-graph__links {
+.mgraph-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 7px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.mgraph-badge--primary {
+  background: rgba(192, 132, 252, 0.2);
+  color: #e9d5ff;
+  border: 1px solid rgba(192, 132, 252, 0.3);
+}
+
+.mgraph-badge--neutral {
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(220, 220, 240, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.mgraph-badge--orange {
+  background: rgba(251, 146, 60, 0.2);
+  color: #fed7aa;
+  border: 1px solid rgba(251, 146, 60, 0.3);
+}
+
+.mgraph-node-info__actions {
+  display: flex;
+  gap: 6px;
+}
+
+.mgraph-node-info__btn {
+  flex: 1;
+  padding: 5px 8px;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  color: rgba(220, 220, 240, 0.85);
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.mgraph-node-info__btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.mgraph-node-info__btn--primary {
+  background: rgba(96, 80, 160, 0.4);
+  border-color: rgba(192, 132, 252, 0.3);
+  color: #e9d5ff;
+}
+
+.mgraph-node-info__btn--primary:hover {
+  background: rgba(120, 100, 190, 0.5);
+}
+
+.mgraph-node-info__links {
   list-style: none;
   margin: 0;
   padding: 0;
   display: flex;
   flex-direction: column;
   gap: 4px;
-  max-height: 40vh;
-  overflow: auto;
+  max-height: 20vh;
+  overflow-y: auto;
 }
 
-.master-graph__links li {
+.mgraph-node-info__link-row {
   display: flex;
-  gap: var(--spacing-xs);
+  gap: 5px;
   align-items: center;
-  justify-content: space-between;
 }
 
-.master-graph__link-name {
-  background: none;
-  border: 0;
-  padding: 0;
-  text-align: left;
-  color: inherit;
-  text-decoration: underline;
-  cursor: pointer;
+.mgraph-node-info__link-name {
   flex: 1;
   min-width: 0;
+  background: none;
+  border: none;
+  color: #93c5fd;
+  font-size: 11px;
+  cursor: pointer;
+  text-align: left;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  padding: 0;
+  text-decoration: underline;
+}
+
+.mgraph-node-info__link-kind {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.35);
+  white-space: nowrap;
+}
+
+.mgraph-node-info__link-remove {
+  background: none;
+  border: none;
+  color: rgba(255, 100, 100, 0.6);
+  font-size: 11px;
+  cursor: pointer;
+  padding: 0;
+  white-space: nowrap;
+}
+
+.mgraph-node-info__link-remove:hover {
+  color: rgba(255, 100, 100, 0.9);
+}
+
+.mgraph-node-info__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.mgraph-node-info__sources {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.mgraph-node-info__source-link {
+  font-size: 11px;
+  color: #93c5fd;
+  overflow-wrap: anywhere;
+  word-break: break-all;
+}
+
+a.mgraph-node-info__source-link:hover {
+  text-decoration: underline;
+}
+
+.mgraph-node-info__msg {
+  font-size: 11px;
+  color: #6ee7b7;
 }
 
 @media (max-width: 900px) {
-  .master-builder__layout,
-  .master-graph__body {
+  .master-builder__layout {
     grid-template-columns: minmax(0, 1fr);
   }
 
@@ -580,5 +919,14 @@
   .master-builder__chip,
   .master-builder__card {
     max-width: 8rem;
+  }
+
+  /* Narrow the floating panel on mobile so it doesn't cover the graph. */
+  .mgraph-panel {
+    width: 220px;
+  }
+
+  .mgraph-node-info {
+    width: 200px;
   }
 }

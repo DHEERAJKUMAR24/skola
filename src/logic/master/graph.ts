@@ -10,6 +10,10 @@ export interface GraphNoteInput {
   linkedNotes: string[];
   /** Card ids linked from the entries of a master note. */
   entryCardIds?: string[];
+  /** Source URLs or external links (Notion, Google Docs, article URLs …). */
+  sourceLinks?: string[];
+  /** Tags for group-query filtering in the graph view. */
+  tags?: string[];
 }
 
 export type NodeKind = "master" | "note";
@@ -23,6 +27,10 @@ export interface GraphNode {
   /** In the deck filter's scope; false for a neighbour pulled in from another deck. */
   inScope: boolean;
   degree: number;
+  /** Source URLs or external references (Notion, Google Docs, article URLs …). */
+  sourceLinks?: string[];
+  /** Tags for group-query matching. */
+  tags?: string[];
 }
 
 export interface GraphEdge {
@@ -119,6 +127,8 @@ export function buildGraph(
         kind: (n.isMaster ? "master" : "note") as NodeKind,
         inScope: inScope(n),
         degree: d,
+        sourceLinks: n.sourceLinks,
+        tags: n.tags,
       },
     ];
   });

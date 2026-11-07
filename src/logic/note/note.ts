@@ -11,6 +11,12 @@ export interface NoteSkeleton {
   linkedNotes: string[];
   /** Lowercase labels, e.g. "closures". Indexed for filtering. */
   tags?: string[];
+  /**
+   * Source URLs or external references (Notion, Google Docs, article links …).
+   * Stored as plain strings — not indexed. Displayed in the graph info panel and
+   * card view. Use `[[note name]]` in note content to auto-link related notes.
+   */
+  sourceLinks?: string[];
 }
 
 export interface Note<T extends NoteType> extends NoteSkeleton {

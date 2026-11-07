@@ -148,24 +148,44 @@ export async function loadGraphData(): Promise<GraphData> {
     db.cards.toArray(),
   ]);
   const cardToNote = new Map(cards.map((c) => [c.id, c.note] as const));
-  return {
-    cardToNote,
-    notes: notes.map((n) => {
-      const master = n.content?.type === NoteType.Master;
-      return {
-        id: n.id,
-        deck: n.deck,
-        label: n.sortField || "(no text)",
-        isMaster: master,
-        linkedNotes: n.linkedNotes ?? [],
-        entryCardIds: master
-          ? (n.content as MasterNoteContent).sections.flatMap((s) =>
-              s.entries.flatMap((e) => (e.cardId ? [e.cardId] : []))
-            )
-          : undefined,
-      };
-    }),
-  };
+
+  // Build label→id map for [[wiki-link]] resolution (case-insensitive).
+  const labelToId = new Map<string, string>();
+  for (const n of notes) {
+    const label = (n.sortField || "").toLowerCase().trim();
+    if (label) labelToId.set(label, n.id);
+  }
+
+  const noteInputs: GraphNoteInput[] = notes.map((n) => {
+    const master = n.content?.type === NoteType.Master;
+
+    // Extract [[wiki-links]] from the full content text. We JSON-stringify the
+    // content so we catch text in any note type without knowing the shape.
+    const contentText = JSON.stringify(n.content ?? "");
+    const wikiLinked = [...contentText.matchAll(/\[\[([^\]]+)\]\]/g)]
+      .map((m) => labelToId.get(m[1].toLowerCase().trim()))
+      .filter((id): id is string => !!id && id !== n.id);
+
+    // Merge explicit + wiki-link targets (deduplicated).
+    const linkedNotes = [...new Set([...(n.linkedNotes ?? []), ...wikiLinked])];
+
+    return {
+      id: n.id,
+      deck: n.deck,
+      label: n.sortField || "(no text)",
+      isMaster: master,
+      linkedNotes,
+      sourceLinks: n.sourceLinks,
+      tags: n.tags,
+      entryCardIds: master
+        ? (n.content as MasterNoteContent).sections.flatMap((s) =>
+            s.entries.flatMap((e) => (e.cardId ? [e.cardId] : []))
+          )
+        : undefined,
+    };
+  });
+
+  return { cardToNote, notes: noteInputs };
 }
 
 /** Removes a note-level link from both sides. */
